@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.penguin.locationtracker.app-mergeDebugResources-56:/values-ldltr-v21/values-ldltr-v21.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\kong\\.gradle\\caches\\8.13\\transforms\\891f9f7df57d61fe17c42c159fbf9049\\transformed\\appcompat-1.7.0\\res\\values-ldltr-v21\\values-ldltr-v21.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "112",
+                        "endOffsets": "163"
+                    }
+                }
+            ]
+        }
+    ]
+}

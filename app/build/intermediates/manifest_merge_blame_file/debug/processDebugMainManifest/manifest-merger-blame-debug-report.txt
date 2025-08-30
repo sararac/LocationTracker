@@ -1,0 +1,413 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.penguin.locationtracker"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="21"
+9        android:targetSdkVersion="36" />
+10
+11    <!-- 권한들 -->
+12    <uses-permission android:name="android.permission.INTERNET" />
+12-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:6:5-67
+12-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:6:22-64
+13    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+13-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:7:5-79
+13-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:7:22-76
+14    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+14-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:8:5-79
+14-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:8:22-76
+15    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+15-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:9:5-81
+15-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:9:22-78
+16    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+16-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:10:5-77
+16-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:10:22-74
+17    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+17-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:11:5-85
+17-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:11:22-82
+18    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+18-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:12:5-77
+18-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:12:22-74
+19    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+19-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:13:5-86
+19-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:13:22-83
+20
+21    <uses-feature
+21-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:7:5-9:35
+22        android:glEsVersion="0x00020000"
+22-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:8:9-41
+23        android:required="true" />
+23-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:9:9-32
+24    <uses-feature
+24-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:10:5-12:36
+25        android:name="android.hardware.wifi"
+25-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:11:9-45
+26        android:required="false" />
+26-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:12:9-33
+27
+28    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+28-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:16:5-76
+28-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:16:22-73
+29    <uses-permission android:name="android.permission.WAKE_LOCK" />
+29-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:24:5-68
+29-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:24:22-65
+30    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+30-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:25:5-79
+30-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:25:22-76
+31    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" />
+31-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:26:5-88
+31-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:26:22-85
+32    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" />
+32-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:27:5-82
+32-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:27:22-79
+33    <uses-permission android:name="com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE" />
+33-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:26:5-110
+33-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:26:22-107
+34
+35    <permission
+35-->[androidx.core:core:1.17.0] C:\Users\kong\.gradle\caches\8.13\transforms\d460917916295aaaec6629861dd218a9\transformed\core-1.17.0\AndroidManifest.xml:22:5-24:47
+36        android:name="com.penguin.locationtracker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+36-->[androidx.core:core:1.17.0] C:\Users\kong\.gradle\caches\8.13\transforms\d460917916295aaaec6629861dd218a9\transformed\core-1.17.0\AndroidManifest.xml:23:9-81
+37        android:protectionLevel="signature" />
+37-->[androidx.core:core:1.17.0] C:\Users\kong\.gradle\caches\8.13\transforms\d460917916295aaaec6629861dd218a9\transformed\core-1.17.0\AndroidManifest.xml:24:9-44
+38
+39    <uses-permission android:name="com.penguin.locationtracker.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+39-->[androidx.core:core:1.17.0] C:\Users\kong\.gradle\caches\8.13\transforms\d460917916295aaaec6629861dd218a9\transformed\core-1.17.0\AndroidManifest.xml:26:5-97
+39-->[androidx.core:core:1.17.0] C:\Users\kong\.gradle\caches\8.13\transforms\d460917916295aaaec6629861dd218a9\transformed\core-1.17.0\AndroidManifest.xml:26:22-94
+40
+41    <application
+41-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:15:5-58:19
+42        android:allowBackup="true"
+42-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:16:9-35
+43        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+43-->[androidx.core:core:1.17.0] C:\Users\kong\.gradle\caches\8.13\transforms\d460917916295aaaec6629861dd218a9\transformed\core-1.17.0\AndroidManifest.xml:28:18-86
+44        android:dataExtractionRules="@xml/data_extraction_rules"
+44-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:17:9-65
+45        android:debuggable="true"
+46        android:extractNativeLibs="true"
+47        android:fullBackupContent="@xml/backup_rules"
+47-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:18:9-54
+48        android:icon="@mipmap/ic_launcher"
+48-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:19:9-43
+49        android:label="@string/app_name"
+49-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:20:9-41
+50        android:roundIcon="@mipmap/ic_launcher_round"
+50-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:21:9-54
+51        android:supportsRtl="true"
+51-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:22:9-35
+52        android:testOnly="true"
+53        android:theme="@style/Theme.LocationTracker"
+53-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:23:9-53
+54        android:usesCleartextTraffic="true" >
+54-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:24:9-44
+55
+56        <!-- 네이버 지도 API 키 -->
+57        <meta-data
+57-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:27:9-29:42
+58            android:name="com.naver.maps.map.CLIENT_ID"
+58-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:28:13-56
+59            android:value="8gxugzlena" />
+59-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:29:13-39
+60        <meta-data
+60-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:30:9-32:42
+61            android:name="com.naver.maps.map.NCP_KEY_ID"
+61-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:31:13-57
+62            android:value="8gxugzlena" />
+62-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:32:13-39
+63
+64        <activity
+64-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:34:9-43:20
+65            android:name="com.penguin.locationtracker.MainActivity"
+65-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:35:13-41
+66            android:exported="true"
+66-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:36:13-36
+67            android:label="@string/app_name"
+67-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:37:13-45
+68            android:theme="@style/Theme.LocationTracker" >
+68-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:38:13-57
+69            <intent-filter>
+69-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:39:13-42:29
+70                <action android:name="android.intent.action.MAIN" />
+70-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:40:17-69
+70-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:40:25-66
+71
+72                <category android:name="android.intent.category.LAUNCHER" />
+72-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:41:17-77
+72-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:41:27-74
+73            </intent-filter>
+74        </activity>
+75
+76        <!-- 위치 추적 서비스 -->
+77        <service
+77-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:46:9-50:56
+78            android:name="com.penguin.locationtracker.LocationTrackingService"
+78-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:47:13-52
+79            android:enabled="true"
+79-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:48:13-35
+80            android:exported="false"
+80-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:49:13-37
+81            android:foregroundServiceType="location" />
+81-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:50:13-53
+82
+83        <!-- 지오펜스 브로드캐스트 리시버 -->
+84        <receiver
+84-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:53:9-56:40
+85            android:name="com.penguin.locationtracker.GeofenceBroadcastReceiver"
+85-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:54:13-54
+86            android:enabled="true"
+86-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:55:13-35
+87            android:exported="false" />
+87-->C:\Users\kong\AndroidStudioProjects\LocationTracker\app\src\main\AndroidManifest.xml:56:13-37
+88
+89        <activity
+89-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:19:9-23:51
+90            android:name="com.naver.maps.map.app.LegendActivity"
+90-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:20:13-65
+91            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+91-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:21:13-91
+92            android:label="@string/navermap_legend"
+92-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:22:13-52
+93            android:theme="@style/navermap_app" />
+93-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:23:13-48
+94        <activity
+94-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:24:9-28:51
+95            android:name="com.naver.maps.map.app.LegalNoticeActivity"
+95-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:25:13-70
+96            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+96-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:26:13-91
+97            android:label="@string/navermap_legal_notice"
+97-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:27:13-58
+98            android:theme="@style/navermap_app" />
+98-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:28:13-48
+99        <activity
+99-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:29:9-33:51
+100            android:name="com.naver.maps.map.app.OpenSourceLicenseActivity"
+100-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:30:13-76
+101            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+101-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:31:13-91
+102            android:label="@string/navermap_open_source_license"
+102-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:32:13-65
+103            android:theme="@style/navermap_app" />
+103-->[com.naver.maps:map-sdk:3.22.1] C:\Users\kong\.gradle\caches\8.13\transforms\00a486936496e8a8558317beb928466e\transformed\map-sdk-3.22.1\AndroidManifest.xml:33:13-48
+104
+105        <service
+105-->[com.google.firebase:firebase-database-ktx:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\1da873451decf24b4035ba28264209fd\transformed\firebase-database-ktx-20.3.0\AndroidManifest.xml:9:9-15:19
+106            android:name="com.google.firebase.components.ComponentDiscoveryService"
+106-->[com.google.firebase:firebase-database-ktx:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\1da873451decf24b4035ba28264209fd\transformed\firebase-database-ktx-20.3.0\AndroidManifest.xml:10:13-84
+107            android:directBootAware="true"
+107-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:32:13-43
+108            android:exported="false" >
+108-->[com.google.firebase:firebase-database-ktx:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\1da873451decf24b4035ba28264209fd\transformed\firebase-database-ktx-20.3.0\AndroidManifest.xml:11:13-37
+109            <meta-data
+109-->[com.google.firebase:firebase-database-ktx:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\1da873451decf24b4035ba28264209fd\transformed\firebase-database-ktx-20.3.0\AndroidManifest.xml:12:13-14:85
+110                android:name="com.google.firebase.components:com.google.firebase.database.ktx.FirebaseDatabaseLegacyRegistrar"
+110-->[com.google.firebase:firebase-database-ktx:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\1da873451decf24b4035ba28264209fd\transformed\firebase-database-ktx-20.3.0\AndroidManifest.xml:13:17-127
+111                android:value="com.google.firebase.components.ComponentRegistrar" />
+111-->[com.google.firebase:firebase-database-ktx:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\1da873451decf24b4035ba28264209fd\transformed\firebase-database-ktx-20.3.0\AndroidManifest.xml:14:17-82
+112            <meta-data
+112-->[com.google.firebase:firebase-database:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\fecc3e1b518ea00383fc05d946e5260a\transformed\firebase-database-20.3.0\AndroidManifest.xml:29:13-31:85
+113                android:name="com.google.firebase.components:com.google.firebase.database.FirebaseDatabaseKtxRegistrar"
+113-->[com.google.firebase:firebase-database:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\fecc3e1b518ea00383fc05d946e5260a\transformed\firebase-database-20.3.0\AndroidManifest.xml:30:17-120
+114                android:value="com.google.firebase.components.ComponentRegistrar" />
+114-->[com.google.firebase:firebase-database:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\fecc3e1b518ea00383fc05d946e5260a\transformed\firebase-database-20.3.0\AndroidManifest.xml:31:17-82
+115            <meta-data
+115-->[com.google.firebase:firebase-database:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\fecc3e1b518ea00383fc05d946e5260a\transformed\firebase-database-20.3.0\AndroidManifest.xml:32:13-34:85
+116                android:name="com.google.firebase.components:com.google.firebase.database.DatabaseRegistrar"
+116-->[com.google.firebase:firebase-database:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\fecc3e1b518ea00383fc05d946e5260a\transformed\firebase-database-20.3.0\AndroidManifest.xml:33:17-109
+117                android:value="com.google.firebase.components.ComponentRegistrar" />
+117-->[com.google.firebase:firebase-database:20.3.0] C:\Users\kong\.gradle\caches\8.13\transforms\fecc3e1b518ea00383fc05d946e5260a\transformed\firebase-database-20.3.0\AndroidManifest.xml:34:17-82
+118            <meta-data
+118-->[com.google.firebase:firebase-analytics-ktx:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\604ff0d8d30a6b99b9c8e30bedc04b36\transformed\firebase-analytics-ktx-21.5.0\AndroidManifest.xml:11:13-13:85
+119                android:name="com.google.firebase.components:com.google.firebase.analytics.ktx.FirebaseAnalyticsLegacyRegistrar"
+119-->[com.google.firebase:firebase-analytics-ktx:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\604ff0d8d30a6b99b9c8e30bedc04b36\transformed\firebase-analytics-ktx-21.5.0\AndroidManifest.xml:12:17-129
+120                android:value="com.google.firebase.components.ComponentRegistrar" />
+120-->[com.google.firebase:firebase-analytics-ktx:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\604ff0d8d30a6b99b9c8e30bedc04b36\transformed\firebase-analytics-ktx-21.5.0\AndroidManifest.xml:13:17-82
+121            <meta-data
+121-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:37:13-39:85
+122                android:name="com.google.firebase.components:com.google.firebase.analytics.connector.internal.AnalyticsConnectorRegistrar"
+122-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:38:17-139
+123                android:value="com.google.firebase.components.ComponentRegistrar" />
+123-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:39:17-82
+124            <meta-data
+124-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\kong\.gradle\caches\8.13\transforms\650c8ba87bcb18721837c8a0733e8f69\transformed\firebase-installations-17.2.0\AndroidManifest.xml:15:13-17:85
+125                android:name="com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsKtxRegistrar"
+125-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\kong\.gradle\caches\8.13\transforms\650c8ba87bcb18721837c8a0733e8f69\transformed\firebase-installations-17.2.0\AndroidManifest.xml:16:17-130
+126                android:value="com.google.firebase.components.ComponentRegistrar" />
+126-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\kong\.gradle\caches\8.13\transforms\650c8ba87bcb18721837c8a0733e8f69\transformed\firebase-installations-17.2.0\AndroidManifest.xml:17:17-82
+127            <meta-data
+127-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\kong\.gradle\caches\8.13\transforms\650c8ba87bcb18721837c8a0733e8f69\transformed\firebase-installations-17.2.0\AndroidManifest.xml:18:13-20:85
+128                android:name="com.google.firebase.components:com.google.firebase.installations.FirebaseInstallationsRegistrar"
+128-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\kong\.gradle\caches\8.13\transforms\650c8ba87bcb18721837c8a0733e8f69\transformed\firebase-installations-17.2.0\AndroidManifest.xml:19:17-127
+129                android:value="com.google.firebase.components.ComponentRegistrar" />
+129-->[com.google.firebase:firebase-installations:17.2.0] C:\Users\kong\.gradle\caches\8.13\transforms\650c8ba87bcb18721837c8a0733e8f69\transformed\firebase-installations-17.2.0\AndroidManifest.xml:20:17-82
+130            <meta-data
+130-->[com.google.firebase:firebase-common-ktx:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\4f6760a05a79c666e0268de8c4d7df13\transformed\firebase-common-ktx-20.4.2\AndroidManifest.xml:12:13-14:85
+131                android:name="com.google.firebase.components:com.google.firebase.ktx.FirebaseCommonLegacyRegistrar"
+131-->[com.google.firebase:firebase-common-ktx:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\4f6760a05a79c666e0268de8c4d7df13\transformed\firebase-common-ktx-20.4.2\AndroidManifest.xml:13:17-116
+132                android:value="com.google.firebase.components.ComponentRegistrar" />
+132-->[com.google.firebase:firebase-common-ktx:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\4f6760a05a79c666e0268de8c4d7df13\transformed\firebase-common-ktx-20.4.2\AndroidManifest.xml:14:17-82
+133            <meta-data
+133-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:35:13-37:85
+134                android:name="com.google.firebase.components:com.google.firebase.FirebaseCommonKtxRegistrar"
+134-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:36:17-109
+135                android:value="com.google.firebase.components.ComponentRegistrar" />
+135-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:37:17-82
+136        </service>
+137
+138        <activity
+138-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\8cab3773c73d804d8f431f7931f4e602\transformed\play-services-base-18.1.0\AndroidManifest.xml:20:9-22:45
+139            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+139-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\8cab3773c73d804d8f431f7931f4e602\transformed\play-services-base-18.1.0\AndroidManifest.xml:20:19-85
+140            android:exported="false"
+140-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\8cab3773c73d804d8f431f7931f4e602\transformed\play-services-base-18.1.0\AndroidManifest.xml:22:19-43
+141            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+141-->[com.google.android.gms:play-services-base:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\8cab3773c73d804d8f431f7931f4e602\transformed\play-services-base-18.1.0\AndroidManifest.xml:21:19-78
+142
+143        <property
+143-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:30:9-32:61
+144            android:name="android.adservices.AD_SERVICES_CONFIG"
+144-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:31:13-65
+145            android:resource="@xml/ga_ad_services_config" />
+145-->[com.google.android.gms:play-services-measurement-api:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\48476acdc91c31016c7617743c9c4730\transformed\play-services-measurement-api-21.5.0\AndroidManifest.xml:32:13-58
+146
+147        <provider
+147-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:23:9-28:39
+148            android:name="com.google.firebase.provider.FirebaseInitProvider"
+148-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:24:13-77
+149            android:authorities="com.penguin.locationtracker.firebaseinitprovider"
+149-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:25:13-72
+150            android:directBootAware="true"
+150-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:26:13-43
+151            android:exported="false"
+151-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:27:13-37
+152            android:initOrder="100" />
+152-->[com.google.firebase:firebase-common:20.4.2] C:\Users\kong\.gradle\caches\8.13\transforms\fb5caa1fad503e1d342b1f93d45c2e02\transformed\firebase-common-20.4.2\AndroidManifest.xml:28:13-36
+153
+154        <receiver
+154-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:29:9-33:20
+155            android:name="com.google.android.gms.measurement.AppMeasurementReceiver"
+155-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:30:13-85
+156            android:enabled="true"
+156-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:31:13-35
+157            android:exported="false" >
+157-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:32:13-37
+158        </receiver>
+159
+160        <service
+160-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:35:9-38:40
+161            android:name="com.google.android.gms.measurement.AppMeasurementService"
+161-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:36:13-84
+162            android:enabled="true"
+162-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:37:13-35
+163            android:exported="false" />
+163-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:38:13-37
+164        <service
+164-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:39:9-43:72
+165            android:name="com.google.android.gms.measurement.AppMeasurementJobService"
+165-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:40:13-87
+166            android:enabled="true"
+166-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:41:13-35
+167            android:exported="false"
+167-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:42:13-37
+168            android:permission="android.permission.BIND_JOB_SERVICE" />
+168-->[com.google.android.gms:play-services-measurement:21.5.0] C:\Users\kong\.gradle\caches\8.13\transforms\32f8de97ab6a924735d2ac3f7ecd9453\transformed\play-services-measurement-21.5.0\AndroidManifest.xml:43:13-69
+169
+170        <activity
+170-->[androidx.compose.ui:ui-test-manifest:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\cd1712ce3133db91e050dda206485d17\transformed\ui-test-manifest-1.9.0\AndroidManifest.xml:23:9-26:79
+171            android:name="androidx.activity.ComponentActivity"
+171-->[androidx.compose.ui:ui-test-manifest:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\cd1712ce3133db91e050dda206485d17\transformed\ui-test-manifest-1.9.0\AndroidManifest.xml:24:13-63
+172            android:exported="true"
+172-->[androidx.compose.ui:ui-test-manifest:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\cd1712ce3133db91e050dda206485d17\transformed\ui-test-manifest-1.9.0\AndroidManifest.xml:25:13-36
+173            android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+173-->[androidx.compose.ui:ui-test-manifest:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\cd1712ce3133db91e050dda206485d17\transformed\ui-test-manifest-1.9.0\AndroidManifest.xml:26:13-76
+174        <activity
+174-->[androidx.compose.ui:ui-tooling-android:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\c27028339be5a6822e2d3b6b4e693677\transformed\ui-tooling\AndroidManifest.xml:23:9-25:39
+175            android:name="androidx.compose.ui.tooling.PreviewActivity"
+175-->[androidx.compose.ui:ui-tooling-android:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\c27028339be5a6822e2d3b6b4e693677\transformed\ui-tooling\AndroidManifest.xml:24:13-71
+176            android:exported="true" />
+176-->[androidx.compose.ui:ui-tooling-android:1.9.0] C:\Users\kong\.gradle\caches\8.13\transforms\c27028339be5a6822e2d3b6b4e693677\transformed\ui-tooling\AndroidManifest.xml:25:13-36
+177
+178        <provider
+178-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
+179            android:name="androidx.startup.InitializationProvider"
+179-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
+180            android:authorities="com.penguin.locationtracker.androidx-startup"
+180-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
+181            android:exported="false" >
+181-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37
+182            <meta-data
+182-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+183                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+183-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:30:17-75
+184                android:value="androidx.startup" />
+184-->[androidx.emoji2:emoji2:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\1758451ee14d7df82d12917b43a455a1\transformed\emoji2-1.4.0\AndroidManifest.xml:31:17-49
+185            <meta-data
+185-->[androidx.lifecycle:lifecycle-process:2.9.3] C:\Users\kong\.gradle\caches\8.13\transforms\0bb515d47da50cfba9e6a62c0189bc5d\transformed\lifecycle-process-2.9.3\AndroidManifest.xml:29:13-31:52
+186                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+186-->[androidx.lifecycle:lifecycle-process:2.9.3] C:\Users\kong\.gradle\caches\8.13\transforms\0bb515d47da50cfba9e6a62c0189bc5d\transformed\lifecycle-process-2.9.3\AndroidManifest.xml:30:17-78
+187                android:value="androidx.startup" />
+187-->[androidx.lifecycle:lifecycle-process:2.9.3] C:\Users\kong\.gradle\caches\8.13\transforms\0bb515d47da50cfba9e6a62c0189bc5d\transformed\lifecycle-process-2.9.3\AndroidManifest.xml:31:17-49
+188            <meta-data
+188-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:29:13-31:52
+189                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+189-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:30:17-85
+190                android:value="androidx.startup" />
+190-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:31:17-49
+191        </provider>
+192
+193        <uses-library
+193-->[androidx.privacysandbox.ads:ads-adservices:1.0.0-beta05] C:\Users\kong\.gradle\caches\8.13\transforms\19a6c2d8dc45c823eef1bde825ac207a\transformed\ads-adservices-1.0.0-beta05\AndroidManifest.xml:23:9-25:40
+194            android:name="android.ext.adservices"
+194-->[androidx.privacysandbox.ads:ads-adservices:1.0.0-beta05] C:\Users\kong\.gradle\caches\8.13\transforms\19a6c2d8dc45c823eef1bde825ac207a\transformed\ads-adservices-1.0.0-beta05\AndroidManifest.xml:24:13-50
+195            android:required="false" />
+195-->[androidx.privacysandbox.ads:ads-adservices:1.0.0-beta05] C:\Users\kong\.gradle\caches\8.13\transforms\19a6c2d8dc45c823eef1bde825ac207a\transformed\ads-adservices-1.0.0-beta05\AndroidManifest.xml:25:13-37
+196
+197        <meta-data
+197-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\753613d6e76ee8c418108ea97648d9ec\transformed\play-services-basement-18.1.0\AndroidManifest.xml:21:9-23:69
+198            android:name="com.google.android.gms.version"
+198-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\753613d6e76ee8c418108ea97648d9ec\transformed\play-services-basement-18.1.0\AndroidManifest.xml:22:13-58
+199            android:value="@integer/google_play_services_version" />
+199-->[com.google.android.gms:play-services-basement:18.1.0] C:\Users\kong\.gradle\caches\8.13\transforms\753613d6e76ee8c418108ea97648d9ec\transformed\play-services-basement-18.1.0\AndroidManifest.xml:23:13-66
+200
+201        <receiver
+201-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:34:9-52:20
+202            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+202-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:35:13-76
+203            android:directBootAware="false"
+203-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:36:13-44
+204            android:enabled="true"
+204-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:37:13-35
+205            android:exported="true"
+205-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:38:13-36
+206            android:permission="android.permission.DUMP" >
+206-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:39:13-57
+207            <intent-filter>
+207-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:40:13-42:29
+208                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+208-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:17-91
+208-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:41:25-88
+209            </intent-filter>
+210            <intent-filter>
+210-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:43:13-45:29
+211                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+211-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:17-85
+211-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:44:25-82
+212            </intent-filter>
+213            <intent-filter>
+213-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:46:13-48:29
+214                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+214-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:17-88
+214-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:47:25-85
+215            </intent-filter>
+216            <intent-filter>
+216-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:49:13-51:29
+217                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+217-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:17-95
+217-->[androidx.profileinstaller:profileinstaller:1.4.0] C:\Users\kong\.gradle\caches\8.13\transforms\38ed2edd9285a55e31bb1045fe694cb2\transformed\profileinstaller-1.4.0\AndroidManifest.xml:50:25-92
+218            </intent-filter>
+219        </receiver>
+220    </application>
+221
+222</manifest>

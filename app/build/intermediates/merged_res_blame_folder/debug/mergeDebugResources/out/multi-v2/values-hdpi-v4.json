@@ -1,0 +1,20 @@
+{
+    "logs": [
+        {
+            "outputFile": "com.penguin.locationtracker.app-mergeDebugResources-56:/values-hdpi-v4/values-hdpi-v4.xml",
+            "map": [
+                {
+                    "source": "C:\\Users\\kong\\.gradle\\caches\\8.13\\transforms\\891f9f7df57d61fe17c42c159fbf9049\\transformed\\appcompat-1.7.0\\res\\values-hdpi-v4\\values-hdpi-v4.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endLines": "6",
+                        "endColumns": "13",
+                        "endOffsets": "327"
+                    }
+                }
+            ]
+        }
+    ]
+}
