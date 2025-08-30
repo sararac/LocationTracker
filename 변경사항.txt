@@ -1,0 +1,49 @@
+
+
+사용자간 위치 공유 안드로이드 앱을 만들꺼야
+필요한 기능은 다음과 같아 .
+1. 10명이하 사용자간 현재 위치를 네이버지도에 표시
+2. 각 사용자의 이동 경로를 네이버지도에 표시
+3. 특정 장소에 도착, 출발시 알람 보내기
+
+안드로이드 스튜디오에서  단계별로 차근차근 동작유무를 확인하면서  
+개발을 추가하려고해 . 
+1. 프로젝트 생성 및 정상 구동 
+2. 사용자 세팅화면 추가 :  아이디 입력/변경 기능
+3. 구글 Firebase Realtime Database 구현 및 테스트 
+4. 사용자별  위치를 저장하는 기능 
+5. 네이버지도 연동 및 테스트 
+6. 각 사용자의 현재 위치를 네이버지도에 보여주는 기능
+7. 특정 사용자 선택시 위치 변경 이력을 보여주는 기능
+8. 7번의 위치변경이력을 네이버지도에 보여주는 기능
+9. 지정한 장소에 도착/출발시 알림 기능 
+
+2번의 사용자 셋팅 화면에 2번이후 기능 추가시 필요한 세팅값 추가할것. 
+
+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
+
+
+
+
+
+
+
+
+
+
+AndroidManifest.xml 에 다음 추가 
+//두 항목을 모두 넣어야 해결된 사례가 있음
+        <meta-data 
+            android:name="com.naver.maps.map.NCP_KEY_ID" 
+            android:value="8gxugzlena" />
+            
+            
+build.gradle(:app)에 네이버지도 SDK 변경
+//3.17.0 버전에  DOCTYPE 선언이 중복 문제 있음 
+    implementation 'com.naver.maps:map-sdk:3.20.0'         
+    
+settings.gradle 에  네이버 지도 저장소 주소변경 
+//(기존 https://naver.jfrog.io/artifactory/maven/는 5월 31일부로 종료
+        maven {
+            url 'https://repository.map.naver.com/archive/maven'
+            //url 'https://naver.jfrog.io/artifactory/maven/'       
