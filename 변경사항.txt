@@ -20,7 +20,7 @@
 
 2번의 사용자 셋팅 화면에 2번이후 기능 추가시 필요한 세팅값 추가할것. 
 
-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
+
 
 
 
