@@ -62,10 +62,7 @@ fun LocationScreen(
 
     // 권한 확인
     LaunchedEffect(Unit) {
-        hasLocationPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        hasLocationPermission = PermissionManager.hasLocationPermission(context)
     }
 
     // 사용자 위치 데이터 실시간 읽기
@@ -198,16 +195,38 @@ fun LocationScreen(
         if (!hasLocationPermission) {
             Button(
                 onClick = {
-                    locationPermissionLauncher.launch(
-                        arrayOf(
-                            Manifest.permission.ACCESS_FINE_LOCATION,
-                            Manifest.permission.ACCESS_COARSE_LOCATION
-                        )
-                    )
+                    // PermissionManager 사용하여 권한 요청
+                    locationPermissionLauncher.launch(PermissionManager.LOCATION_PERMISSIONS)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("위치 권한 요청")
+            }
+
+            // 추가 정보 표시
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "위치 추적을 위해 다음 권한이 필요합니다:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    val deniedPermissions = PermissionManager.getDeniedPermissions(context)
+                    deniedPermissions.forEach { permission ->
+                        Text(
+                            text = "• ${PermissionManager.getPermissionDisplayName(permission)}",
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 8.dp, top = 2.dp)
+                        )
+                    }
+                }
             }
         } else {
             Button(

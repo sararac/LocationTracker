@@ -48,14 +48,11 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Firebase initialization error", e)
         }
 
-        // 앱 시작 시 백그라운드 서비스 자동 시작
-        startLocationServiceIfEnabled()
-
         enableEdgeToEdge()
         setContent {
             LocationTrackerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    LocationTrackerApp(
+                    LocationTrackerAppWithPermissions(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -64,14 +61,15 @@ class MainActivity : ComponentActivity() {
     }
 
     // 설정에 따라 위치 추적 서비스 자동 시작
-    private fun startLocationServiceIfEnabled() {
+    internal fun startLocationServiceIfEnabled() {
         val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         val userId = prefs.getString("user_id", "") ?: ""
         val autoStart = prefs.getBoolean("auto_start_service", true)
 
         Log.d("MainActivity", "Auto start check - User ID: $userId, Auto start: $autoStart")
 
-        if (userId.isNotEmpty() && autoStart) {
+        // 권한이 있고, 사용자 ID가 설정되어 있고, 자동 시작이 활성화된 경우에만 서비스 시작
+        if (userId.isNotEmpty() && autoStart && PermissionManager.hasLocationPermission(this)) {
             val serviceIntent = Intent(this, LocationTrackingService::class.java)
             serviceIntent.action = LocationTrackingService.ACTION_START_TRACKING
 
@@ -92,8 +90,48 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // 앱이 포그라운드로 올라올 때마다 서비스 상태 확인 및 시작
-        startLocationServiceIfEnabled()
+        // 앱이 포그라운드로 올라올 때마다 권한 확인 후 서비스 시작
+        if (PermissionManager.hasAllRequiredPermissions(this)) {
+            startLocationServiceIfEnabled()
+        }
+    }
+}
+
+@Composable
+fun LocationTrackerAppWithPermissions(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var hasRequiredPermissions by remember { mutableStateOf(false) }
+    var shouldCheckPermissions by remember { mutableStateOf(true) }
+
+    // 권한 확인
+    LaunchedEffect(shouldCheckPermissions) {
+        if (shouldCheckPermissions) {
+            hasRequiredPermissions = PermissionManager.hasAllRequiredPermissions(context)
+            Log.d("LocationTrackerApp", "Permission check - hasRequiredPermissions: $hasRequiredPermissions")
+        }
+    }
+
+    // 권한 상태에 따라 다른 화면 표시
+    if (!hasRequiredPermissions) {
+        PermissionRequestScreen(
+            onPermissionsGranted = {
+                Log.d("LocationTrackerApp", "All permissions granted!")
+                hasRequiredPermissions = true
+
+                // 권한이 허용되면 위치 서비스 시작
+                if (context is MainActivity) {
+                    context.startLocationServiceIfEnabled()
+                }
+            },
+            onSkip = {
+                Log.d("LocationTrackerApp", "Permission request skipped")
+                hasRequiredPermissions = true // 건너뛰기 허용
+            },
+            showSkipButton = true, // 건너뛰기 버튼 표시
+            modifier = modifier
+        )
+    } else {
+        LocationTrackerApp(modifier = modifier)
     }
 }
 
@@ -162,7 +200,7 @@ fun MainScreen(
 
         // 서비스 실행 상태 확인 (간접적)
         val autoStart = prefs.getBoolean("auto_start_service", true)
-        isServiceRunning = savedUserId.isNotEmpty() && autoStart
+        isServiceRunning = savedUserId.isNotEmpty() && autoStart && PermissionManager.hasLocationPermission(context)
     }
 
     Column(
@@ -189,6 +227,38 @@ fun MainScreen(
         )
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        // 권한 상태 표시
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = if (PermissionManager.hasAllRequiredPermissions(context))
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.errorContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "권한 상태",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text = if (PermissionManager.hasAllRequiredPermissions(context))
+                        "✅ 모든 권한 허용됨"
+                    else
+                        "❌ 권한 확인 필요",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // 사용자 정보 및 서비스 상태 표시
         if (savedUserId.isNotEmpty()) {
@@ -294,7 +364,7 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "백그라운드 위치 추적 기능 추가 완료",
+            text = "백그라운드 위치 추적 기능 및 권한 관리",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.secondary,
             textAlign = TextAlign.Center

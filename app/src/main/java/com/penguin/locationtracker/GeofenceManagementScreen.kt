@@ -40,14 +40,13 @@ import kotlinx.coroutines.withContext
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
-
 @Composable
 fun GeofenceManagementScreen(
     onBackToMain: () -> Unit,
     selectedLatitude: Double? = null,
     selectedLongitude: Double? = null,
-    autoShowDialog: Boolean = false, // 추가
-    onDialogShown: () -> Unit = {}, // 추가
+    autoShowDialog: Boolean = false,
+    onDialogShown: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -82,17 +81,8 @@ fun GeofenceManagementScreen(
 
     // 권한 확인
     LaunchedEffect(Unit) {
-        hasLocationPermission = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            hasNotificationPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        }
+        hasLocationPermission = PermissionManager.hasLocationPermission(context)
+        hasNotificationPermission = PermissionManager.hasNotificationPermission(context)
     }
 
     // 권한 요청 런처들
@@ -246,19 +236,7 @@ fun GeofenceManagementScreen(
             if (!hasLocationPermission) {
                 Button(
                     onClick = {
-                        val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                                Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                            )
-                        } else {
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            )
-                        }
-                        locationPermissionLauncher.launch(permissions)
+                        locationPermissionLauncher.launch(PermissionManager.LOCATION_PERMISSIONS)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -266,14 +244,60 @@ fun GeofenceManagementScreen(
                 }
             }
 
-            if (!hasNotificationPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!hasNotificationPermission && PermissionManager.NOTIFICATION_PERMISSION.isNotEmpty()) {
                 Button(
                     onClick = {
-                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        notificationPermissionLauncher.launch(PermissionManager.NOTIFICATION_PERMISSION[0])
                     },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("알림 권한 요청")
+                }
+            }
+        }
+
+        // 권한 상태 표시
+        if (!PermissionManager.hasAllRequiredPermissions(context)) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "지오펜스 기능을 사용하려면 다음 권한이 필요합니다:",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    val deniedPermissions = PermissionManager.getDeniedPermissions(context)
+                    deniedPermissions.forEach { permission ->
+                        Row(
+                            modifier = Modifier.padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "❌",
+                                fontSize = 12.sp,
+                                modifier = Modifier.padding(end = 4.dp)
+                            )
+                            Text(
+                                text = PermissionManager.getPermissionDisplayName(permission),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "모든 권한을 허용하면 백그라운드에서 자동으로 위치 기반 알림을 받을 수 있습니다.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = androidx.compose.ui.text.TextStyle(lineHeight = 14.sp)
+                    )
                 }
             }
         }
@@ -345,34 +369,6 @@ fun GeofenceManagementScreen(
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("알림 테스트")
-                }
-            }
-        } else {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "지오펜스 기능을 사용하려면:",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "• 위치 권한 (정확한 위치, 백그라운드)",
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "• 알림 권한",
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "• 사용자 ID 설정이 필요합니다",
-                        fontSize = 12.sp
-                    )
                 }
             }
         }
