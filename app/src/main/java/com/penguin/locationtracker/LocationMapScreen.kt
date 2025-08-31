@@ -1,6 +1,8 @@
 package com.penguin.locationtracker
 
 import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -8,11 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.platform.LocalContext
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.ValueEventListener
@@ -26,13 +29,11 @@ import com.naver.maps.map.OnMapReadyCallback
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import kotlinx.coroutines.delay
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 
 @Composable
 fun LocationMapScreen(
     onBackToMain: () -> Unit,
-    onShowUserHistory: (String) -> Unit, // 새로 추가된 매개변수
+    onShowUserHistory: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -76,7 +77,7 @@ fun LocationMapScreen(
 
                             latestLocation?.let { location ->
                                 latestLocations[userId] = location
-                                Log.d("LocationMap", "User $userId: ${location.latitude}, ${location.longitude}")
+                                Log.d("LocationMap", "User $userId: ${location.latitude}, ${location.longitude}, 머문시간: ${location.getFormattedStayDuration()}")
                             }
                         }
 
@@ -88,12 +89,10 @@ fun LocationMapScreen(
                         }
                         hasError = false
 
-                        // 새로고침 상태 해제
                         if (isRefreshing) {
                             isRefreshing = false
                         }
 
-                        // 지도가 준비되었으면 마커 업데이트
                         naverMapInstance?.let { map ->
                             updateMarkersOnMap(map, latestLocations, activeMarkers)
                         }
@@ -180,7 +179,6 @@ fun LocationMapScreen(
                                     naverMapInstance = naverMap
                                     isMapReady = true
 
-                                    // 첫 번째 사용자가 있으면 그 위치를 중심으로, 없으면 한국 중심
                                     val initialPosition = if (userLocations.isNotEmpty()) {
                                         val firstUser = userLocations.values.first()
                                         CameraPosition(
@@ -189,13 +187,12 @@ fun LocationMapScreen(
                                         )
                                     } else {
                                         CameraPosition(
-                                            LatLng(37.5665, 126.9780), // 서울 시청
+                                            LatLng(37.5665, 126.9780),
                                             7.0
                                         )
                                     }
                                     naverMap.cameraPosition = initialPosition
 
-                                    // 기존 위치 데이터가 있으면 마커 표시
                                     updateMarkersOnMap(naverMap, userLocations, activeMarkers)
 
                                     statusMessage = if (userLocations.isEmpty()) {
@@ -218,7 +215,7 @@ fun LocationMapScreen(
             )
         }
 
-        // 사용자 목록
+        // 사용자 목록 with 머문시간
         if (userLocations.isNotEmpty()) {
             Card {
                 Column(
@@ -231,68 +228,31 @@ fun LocationMapScreen(
                         modifier = Modifier.padding(bottom = 1.dp)
                     )
 
-                    // 사용자 목록 부분에서 클릭 이벤트 수정
                     LazyColumn(
-                        modifier = Modifier.heightIn(max = 100.dp),
-                        verticalArrangement = Arrangement.spacedBy((-1).dp)
+                        modifier = Modifier.heightIn(max = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         items(userLocations.toList().sortedBy { it.first }) { (userId, location) ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .clickable {
-                                        Log.d("LocationMap", "User $userId clicked - showing history")
-                                        onShowUserHistory(userId) // 이력 화면으로 이동
+                            UserLocationItem(
+                                userId = userId,
+                                location = location,
+                                onUserClick = { onShowUserHistory(userId) },
+                                onLocationClick = {
+                                    naverMapInstance?.let { map ->
+                                        try {
+                                            val cameraPosition = CameraPosition(
+                                                LatLng(location.latitude, location.longitude),
+                                                15.0
+                                            )
+                                            map.cameraPosition = cameraPosition
+                                        } catch (e: Exception) {
+                                            Log.e("LocationMap", "Error moving camera", e)
+                                        }
                                     }
-                                    .padding(horizontal = 4.dp, vertical = 1.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = getMarkerColorEmoji(userId),
-                                        fontSize = 12.sp,
-                                        modifier = Modifier.padding(end = 4.dp)
-                                    )
-
-                                    Text(
-                                        text = userId,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
                                 }
-
-                                Text(
-                                    text = location.getFormattedTime(),
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                            )
                         }
                     }
-                }
-            }
-        } else if (!hasError) {
-            // 데이터가 없을 때 안내 메시지
-            Card {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "위치 데이터를 찾을 수 없습니다",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "먼저 '위치 추적' 메뉴에서 위치를 저장해보세요",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
             }
         }
@@ -369,68 +329,166 @@ fun LocationMapScreen(
         }
 
         Text(
-            text = "👥 6단계: 실시간 사용자 위치 표시",
+            text = "실시간 사용자 위치 및 머문시간 표시",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.secondary
         )
     }
 }
 
-// 지도에 마커 업데이트하는 함수 (오류 수정)
+@Composable
+private fun UserLocationItem(
+    userId: String,
+    location: LocationData,
+    onUserClick: () -> Unit,
+    onLocationClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                if (location.stayDuration > 0) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+                MaterialTheme.shapes.small
+            )
+            .clickable { onLocationClick() }
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = getMarkerColorEmoji(userId),
+                fontSize = 12.sp
+            )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Column {
+                Text(
+                    text = userId,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (location.stayDuration > 0) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                )
+
+                // 머문시간이 있으면 표시
+                if (location.stayDuration > 0) {
+                    Text(
+                        text = location.getFormattedStayDuration(),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+
+        Column(
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = location.getFormattedTime().substringAfter(" "), // 시간 부분만
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // 이력보기 버튼
+            Text(
+                text = "이력",
+                fontSize = 9.sp,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier
+                    .clickable { onUserClick() }
+                    .padding(2.dp)
+            )
+        }
+    }
+}
+
+// 지도에 마커 업데이트하는 함수 (머문시간 포함)
 private fun updateMarkersOnMap(
     naverMap: NaverMap,
     userLocations: Map<String, LocationData>,
     activeMarkers: MutableMap<String, Marker>
 ) {
-    // 기존 마커 제거
     activeMarkers.values.forEach { marker ->
         marker.map = null
     }
     activeMarkers.clear()
 
-    // 새 마커 추가
     userLocations.forEach { (userId, location) ->
-        // colorIndex를 미리 계산
         val colorIndex = Math.abs(userId.hashCode()) % 8
+
+        // 머문시간에 따라 캡션 텍스트 구성
+        val captionText = if (location.stayDuration > 0) {
+            "$userId\n${location.getFormattedStayDuration()}"
+        } else {
+            userId
+        }
 
         val marker = Marker().apply {
             position = LatLng(location.latitude, location.longitude)
-            captionText = userId
-            captionTextSize = 14f
+            this.captionText = captionText
+            captionTextSize = if (location.stayDuration > 0) 11f else 12f
 
-            // 마커 색상을 더 다양하게 분배
-            icon = when (colorIndex) {
-                0 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
-                1 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_blue)
-                2 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_green)
-                3 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_gray)
-                4 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_pink)
-                5 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_yellow)
-                6 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_lightblue)
-                else -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
+            // 머문시간이 있으면 다른 아이콘 사용
+            icon = if (location.stayDuration > 0) {
+                when (colorIndex) {
+                    0 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
+                    1 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_blue)
+                    2 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_green)
+                    3 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_gray)
+                    4 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_pink)
+                    5 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_yellow)
+                    6 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_lightblue)
+                    else -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
+                }
+            } else {
+                // 머문시간이 없으면 기본 아이콘
+                when (colorIndex) {
+                    0 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
+                    1 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_blue)
+                    2 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_green)
+                    3 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_gray)
+                    4 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_pink)
+                    5 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_yellow)
+                    6 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_lightblue)
+                    else -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
+                }
             }
+
             map = naverMap
         }
         activeMarkers[userId] = marker
 
-        // 이제 colorIndex가 정의된 스코프에서 사용 가능
-        Log.d("LocationMap", "Added marker for $userId at ${location.latitude}, ${location.longitude}, color: $colorIndex")
+        Log.d("LocationMap", "Added marker for $userId with stay duration: ${location.getFormattedStayDuration()}")
     }
 
     Log.d("LocationMap", "Updated ${userLocations.size} markers on map")
 }
 
-// 마커 색상에 맞는 이모지 반환
 private fun getMarkerColorEmoji(userId: String): String {
     val colorIndex = Math.abs(userId.hashCode()) % 8
     return when (colorIndex) {
-        0 -> "🔴" // red
-        1 -> "🔵" // blue
-        2 -> "🟢" // green
-        3 -> "⚫" // gray
-        4 -> "🟣" // pink
-        5 -> "🟡" // yellow
-        6 -> "🔵" // lightblue
+        0 -> "🔴"
+        1 -> "🔵"
+        2 -> "🟢"
+        3 -> "⚫"
+        4 -> "🟣"
+        5 -> "🟡"
+        6 -> "🔵"
         else -> "🔴"
     }
 }

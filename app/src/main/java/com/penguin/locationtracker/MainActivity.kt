@@ -1,6 +1,8 @@
 package com.penguin.locationtracker
 
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -46,6 +48,9 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Firebase initialization error", e)
         }
 
+        // 앱 시작 시 백그라운드 서비스 자동 시작
+        startLocationServiceIfEnabled()
+
         enableEdgeToEdge()
         setContent {
             LocationTrackerTheme {
@@ -57,6 +62,39 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // 설정에 따라 위치 추적 서비스 자동 시작
+    private fun startLocationServiceIfEnabled() {
+        val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+        val userId = prefs.getString("user_id", "") ?: ""
+        val autoStart = prefs.getBoolean("auto_start_service", true)
+
+        Log.d("MainActivity", "Auto start check - User ID: $userId, Auto start: $autoStart")
+
+        if (userId.isNotEmpty() && autoStart) {
+            val serviceIntent = Intent(this, LocationTrackingService::class.java)
+            serviceIntent.action = LocationTrackingService.ACTION_START_TRACKING
+
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(serviceIntent)
+                } else {
+                    startService(serviceIntent)
+                }
+                Log.d("MainActivity", "Location service started automatically")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Failed to start location service", e)
+            }
+        } else {
+            Log.d("MainActivity", "Location service not started - conditions not met")
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 앱이 포그라운드로 올라올 때마다 서비스 상태 확인 및 시작
+        startLocationServiceIfEnabled()
+    }
 }
 
 @Composable
@@ -65,7 +103,7 @@ fun LocationTrackerApp(modifier: Modifier = Modifier) {
     var selectedUserId by remember { mutableStateOf("") }
     var selectedLatitude by remember { mutableStateOf<Double?>(null) }
     var selectedLongitude by remember { mutableStateOf<Double?>(null) }
-    var showGeofenceDialog by remember { mutableStateOf(false) } // 추가
+    var showGeofenceDialog by remember { mutableStateOf(false) }
 
     when (currentScreen) {
         "main" -> MainMapScreen(
@@ -77,7 +115,7 @@ fun LocationTrackerApp(modifier: Modifier = Modifier) {
             onNavigateToGeofence = { latitude, longitude ->
                 selectedLatitude = latitude
                 selectedLongitude = longitude
-                showGeofenceDialog = true // 다이얼로그 표시
+                showGeofenceDialog = true
                 currentScreen = "geofence"
             },
             modifier = modifier
@@ -95,8 +133,8 @@ fun LocationTrackerApp(modifier: Modifier = Modifier) {
             onBackToMain = { currentScreen = "main" },
             selectedLatitude = selectedLatitude,
             selectedLongitude = selectedLongitude,
-            autoShowDialog = showGeofenceDialog, // 추가
-            onDialogShown = { showGeofenceDialog = false }, // 추가
+            autoShowDialog = showGeofenceDialog,
+            onDialogShown = { showGeofenceDialog = false },
             modifier = modifier
         )
     }
@@ -109,17 +147,22 @@ fun MainScreen(
     onNavigateToLocation: () -> Unit,
     onNavigateToMap: () -> Unit,
     onNavigateToLocationMap: () -> Unit,
-    onNavigateToGeofence: () -> Unit, // 새로 추가
+    onNavigateToGeofence: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val prefs = remember { context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE) }
 
     var savedUserId by remember { mutableStateOf("") }
+    var isServiceRunning by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         savedUserId = prefs.getString("user_id", "") ?: ""
         Log.d("MainActivity", "Loaded user ID: $savedUserId")
+
+        // 서비스 실행 상태 확인 (간접적)
+        val autoStart = prefs.getBoolean("auto_start_service", true)
+        isServiceRunning = savedUserId.isNotEmpty() && autoStart
     }
 
     Column(
@@ -147,10 +190,14 @@ fun MainScreen(
 
         Spacer(modifier = Modifier.height(32.dp))
 
+        // 사용자 정보 및 서비스 상태 표시
         if (savedUserId.isNotEmpty()) {
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    containerColor = if (isServiceRunning)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.secondaryContainer
                 )
             ) {
                 Column(
@@ -167,6 +214,17 @@ fun MainScreen(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = if (isServiceRunning) "백그라운드 추적 활성" else "추적 대기 중",
+                        fontSize = 12.sp,
+                        color = if (isServiceRunning)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -226,7 +284,6 @@ fun MainScreen(
             Text("실시간 사용자 위치 지도", fontSize = 16.sp)
         }
 
-        // 새로 추가되는 버튼
         Button(
             onClick = onNavigateToGeofence,
             modifier = Modifier.fillMaxWidth()
@@ -237,7 +294,7 @@ fun MainScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "🔔 9단계: 지정 장소 도착/출발 알림 추가",
+            text = "백그라운드 위치 추적 기능 추가 완료",
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.secondary,
             textAlign = TextAlign.Center
@@ -255,7 +312,7 @@ fun MainScreenPreview() {
             onNavigateToLocation = {},
             onNavigateToMap = {},
             onNavigateToLocationMap = {},
-            onNavigateToGeofence = {} // 새로 추가
+            onNavigateToGeofence = {}
         )
     }
 }

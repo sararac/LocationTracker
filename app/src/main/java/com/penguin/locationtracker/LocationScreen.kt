@@ -121,7 +121,9 @@ fun LocationScreen(
                     latitude = location.latitude,
                     longitude = location.longitude,
                     timestamp = System.currentTimeMillis(),
-                    address = "위도: %.6f, 경도: %.6f".format(location.latitude, location.longitude)
+                    address = "위도: %.6f, 경도: %.6f".format(location.latitude, location.longitude),
+                    stayDuration = 0L, // 수동 저장은 머문시간 0으로 시작
+                    lastUpdateTime = System.currentTimeMillis()
                 )
 
                 // Firebase에 저장
@@ -241,25 +243,7 @@ fun LocationScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(userLocations) { location ->
-                            Card(
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Text(
-                                        text = location.getFormattedTime(),
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = location.getLocationSummary(),
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
+                            LocationItem(location = location)
                         }
                     }
                 }
@@ -276,9 +260,73 @@ fun LocationScreen(
         }
 
         Text(
-            text = "📍 4단계: 사용자별 위치 저장 기능",
+            text = "📍 위치 저장 및 머문시간 추적",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.secondary
         )
+    }
+}
+
+@Composable
+private fun LocationItem(location: LocationData) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = if (location.stayDuration > 0) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            }
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // 시간 정보
+            Text(
+                text = location.getFormattedTime(),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 위치 정보
+            Text(
+                text = location.getLocationSummary(),
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            // 머문시간 표시 (0보다 클 때만)
+            if (location.stayDuration > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "머문시간: ${location.getFormattedStayDuration()}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSecondary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+
+                // 마지막 업데이트 시간
+                if (location.lastUpdateTime > location.timestamp) {
+                    Text(
+                        text = "마지막 업데이트: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(location.lastUpdateTime))}",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+        }
     }
 }
