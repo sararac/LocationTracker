@@ -2,6 +2,7 @@ package com.penguin.locationtracker
 
 import android.location.Geocoder
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -57,6 +58,7 @@ fun UserLocationHistoryMapScreen(
     var isHistoryExpanded by remember { mutableStateOf(false) }
     var selectedHours by remember { mutableStateOf("6") }
     var filteredLocationHistory by remember { mutableStateOf(listOf<LocationData>()) }
+    var showTimeDialog by remember { mutableStateOf(false) }
 
     val database = remember { Firebase.database }
     val userLocationsRef = remember { database.getReference("locations").child(userId) }
@@ -241,28 +243,28 @@ fun UserLocationHistoryMapScreen(
                 Text("전체보기", fontSize = 12.sp)
             }
 
-            // 시간 입력 필드 (수정된 버전)
-            OutlinedTextField(
-                value = selectedHours,
-                onValueChange = { newValue ->
-                    selectedHours = newValue.filter { char -> char.isDigit() }
-                },
+            // 시간 입력 버튼
+            OutlinedButton(
+                onClick = { showTimeDialog = true },
                 modifier = Modifier
                     .weight(1f)
                     .height(32.dp),
-                textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
-                placeholder = { Text("6", fontSize = 12.sp) },
-                suffix = { Text("시간", fontSize = 10.sp) },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
+                contentPadding = PaddingValues(2.dp),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+            ) {
+                Text(
+                    text = "${selectedHours}시간",
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
+            }
 
             Button(
                 onClick = {
                     isLoading = true
-                    userLocationsRef.get().addOnSuccessListener {
+                    userLocationsRef.get().addOnSuccessListener { snapshot ->
                         Log.d("LocationHistoryMap", "Manual refresh completed")
-                    }.addOnFailureListener {
+                    }.addOnFailureListener { error ->
                         isLoading = false
                         Log.e("LocationHistoryMap", "Manual refresh failed")
                     }
@@ -449,6 +451,44 @@ fun UserLocationHistoryMapScreen(
                 modifier = Modifier.fillMaxSize()
             )
         }
+    }
+
+    // 시간 입력 다이얼로그
+    if (showTimeDialog) {
+        var tempHours by remember { mutableStateOf(selectedHours) }
+
+        AlertDialog(
+            onDismissRequest = { showTimeDialog = false },
+            title = { Text("시간 설정") },
+            text = {
+                OutlinedTextField(
+                    value = tempHours,
+                    onValueChange = { newValue ->
+                        tempHours = newValue.filter { char: Char -> char.isDigit() }
+                    },
+                    label = { Text("시간") },
+                    suffix = { Text("시간") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    placeholder = { Text("6") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        selectedHours = tempHours.ifEmpty { "6" }
+                        showTimeDialog = false
+                    }
+                ) {
+                    Text("확인")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTimeDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
     }
 }
 
