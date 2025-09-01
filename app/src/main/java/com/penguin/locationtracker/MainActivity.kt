@@ -35,6 +35,7 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.penguin.locationtracker.ui.theme.LocationTrackerTheme
 
+// MainActivity.kt의 onCreate() 메서드 업데이트
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,8 +52,9 @@ class MainActivity : ComponentActivity() {
         // 알림에서 실행된 경우 처리
         val selectedUserId = intent.getStringExtra("selected_user_id")
         val notificationType = intent.getStringExtra("notification_type")
+        val showNotificationHistory = intent.getBooleanExtra("show_notification_history", false) // 🆕 추가
 
-        Log.d("MainActivity", "Intent extras - selectedUserId: $selectedUserId, notificationType: $notificationType")
+        Log.d("MainActivity", "Intent extras - selectedUserId: $selectedUserId, notificationType: $notificationType, showNotificationHistory: $showNotificationHistory")
 
         enableEdgeToEdge()
         setContent {
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
                     LocationTrackerAppWithPermissions(
                         selectedUserId = selectedUserId,
                         notificationType = notificationType,
+                        showNotificationHistory = showNotificationHistory, // 🆕 추가
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -109,6 +112,7 @@ class MainActivity : ComponentActivity() {
 fun LocationTrackerAppWithPermissions(
     selectedUserId: String? = null,
     notificationType: String? = null,
+    showNotificationHistory: Boolean = false, // 🆕 추가
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -146,15 +150,19 @@ fun LocationTrackerAppWithPermissions(
         LocationTrackerApp(
             selectedUserId = selectedUserId,
             notificationType = notificationType,
+            showNotificationHistory = showNotificationHistory, // 🆕 추가
             modifier = modifier
         )
     }
 }
 
+// MainActivity.kt에 추가할 부분들
+
 @Composable
 fun LocationTrackerApp(
     selectedUserId: String? = null,
     notificationType: String? = null,
+    showNotificationHistory: Boolean = false, // 🆕 추가
     modifier: Modifier = Modifier
 ) {
     var currentScreen by remember { mutableStateOf("main") }
@@ -162,6 +170,14 @@ fun LocationTrackerApp(
     var selectedLatitude by remember { mutableStateOf<Double?>(null) }
     var selectedLongitude by remember { mutableStateOf<Double?>(null) }
     var showGeofenceDialog by remember { mutableStateOf(false) }
+
+    // 🆕 알림 이력 화면 자동 표시
+    LaunchedEffect(showNotificationHistory) {
+        if (showNotificationHistory) {
+            currentScreen = "notification_history"
+            Log.d("LocationTrackerApp", "Auto-showing notification history from notification")
+        }
+    }
 
     // 알림에서 온 경우 해당 사용자 자동 선택
     LaunchedEffect(selectedUserId, notificationType) {
@@ -185,6 +201,7 @@ fun LocationTrackerApp(
                 showGeofenceDialog = true
                 currentScreen = "geofence"
             },
+            onNavigateToNotificationHistory = { currentScreen = "notification_history" }, // 🆕 추가
             modifier = modifier
         )
         "settings" -> SettingsMenuScreen(
@@ -202,6 +219,11 @@ fun LocationTrackerApp(
             selectedLongitude = selectedLongitude,
             autoShowDialog = showGeofenceDialog,
             onDialogShown = { showGeofenceDialog = false },
+            modifier = modifier
+        )
+        // 🆕 알림 이력 화면 추가
+        "notification_history" -> GeofenceNotificationHistoryScreen(
+            onBackToMain = { currentScreen = "main" },
             modifier = modifier
         )
     }

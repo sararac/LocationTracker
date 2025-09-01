@@ -5,9 +5,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.content.Context
+
 
 @Composable
 fun SettingsMenuScreen(
@@ -24,6 +27,7 @@ fun SettingsMenuScreen(
             onNavigateToLocationTest = { currentMenu = "location" },
             onNavigateToMapTest = { currentMenu = "map" },
             onNavigateToGeofence = { currentMenu = "geofence" },
+            onNavigateToNotificationHistory = { currentMenu = "notification_history" }, // 🆕 추가
             onBackToMain = onBackToMain,
             modifier = modifier
         )
@@ -47,6 +51,11 @@ fun SettingsMenuScreen(
             onBackToMain = { currentMenu = "menu" },
             modifier = modifier
         )
+        // 🆕 알림 이력 화면 추가
+        "notification_history" -> GeofenceNotificationHistoryScreen(
+            onBackToMain = { currentMenu = "menu" },
+            modifier = modifier
+        )
     }
 }
 
@@ -57,9 +66,25 @@ private fun MainSettingsMenu(
     onNavigateToLocationTest: () -> Unit,
     onNavigateToMapTest: () -> Unit,
     onNavigateToGeofence: () -> Unit,
+    onNavigateToNotificationHistory: () -> Unit, // 🆕 추가
     onBackToMain: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE) }
+    val currentUserId = remember { prefs.getString("user_id", "") ?: "" }
+    var unreadNotificationCount by remember { mutableStateOf(0) }
+
+    // 🆕 읽지 않은 알림 개수 조회
+    val historyManager = remember { GeofenceNotificationHistoryManager(context) }
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            historyManager.getUnreadCount(currentUserId) { count ->
+                unreadNotificationCount = count
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -92,7 +117,29 @@ private fun MainSettingsMenu(
             Text("위치 알림 설정", fontSize = 16.sp)
         }
 
-        Divider()
+        // 🆕 알림 이력 버튼 추가
+        Button(
+            onClick = onNavigateToNotificationHistory,
+            modifier = Modifier.fillMaxWidth(),
+            colors = if (unreadNotificationCount > 0) {
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            } else {
+                ButtonDefaults.buttonColors()
+            }
+        ) {
+            Text(
+                text = if (unreadNotificationCount > 0) {
+                    "위치 알림 이력 (${unreadNotificationCount}개 미읽음)"
+                } else {
+                    "위치 알림 이력"
+                },
+                fontSize = 16.sp
+            )
+        }
+
+        HorizontalDivider()
 
         Text(
             text = "테스트 메뉴",
@@ -131,7 +178,7 @@ private fun MainSettingsMenu(
         }
 
         Text(
-            text = "Location Tracker v1.0",
+            text = "Location Tracker v1.1 - 알림 이력 기능 추가",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.secondary
         )

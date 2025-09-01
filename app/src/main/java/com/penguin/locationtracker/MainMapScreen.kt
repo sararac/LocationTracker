@@ -39,6 +39,7 @@ fun MainMapScreen(
     onNavigateToSettings: () -> Unit,
     onShowUserHistory: (String) -> Unit,
     onNavigateToGeofence: (Double?, Double?) -> Unit,
+    onNavigateToNotificationHistory: () -> Unit, // 🆕 추가
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -51,6 +52,7 @@ fun MainMapScreen(
     var activeMarkers by remember { mutableStateOf(mutableMapOf<String, Marker>()) }
     var isRefreshing by remember { mutableStateOf(false) }
     var viewMode by remember { mutableStateOf("현재위치") }
+    var unreadNotificationCount by remember { mutableStateOf(0) }
 
     // 길게 누르기 관련 상태
     var showContextMenu by remember { mutableStateOf(false) }
@@ -61,7 +63,17 @@ fun MainMapScreen(
     val locationsRef = remember { database.getReference("locations") }
     val geocoder = remember { Geocoder(context, Locale.KOREAN) }
 
-    // 주소 가져오기 함수 (디버깅 포함)
+    // 🆕 읽지 않은 알림 개수 조회
+    val historyManager = remember { GeofenceNotificationHistoryManager(context) }
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotEmpty()) {
+            historyManager.getUnreadCount(currentUserId) { count ->
+                unreadNotificationCount = count
+            }
+        }
+    }
+
+    // 주소 가져오기 함수 (기존과 동일)
     suspend fun getAddressFromCoordinates(latitude: Double, longitude: Double): String {
         return try {
             withContext(Dispatchers.IO) {
@@ -72,26 +84,14 @@ fun MainMapScreen(
                     val address = addresses[0]
                     Log.d("MainMap", "Address object: $address")
 
-                    // 모든 주소 정보 로깅
-                    Log.d("MainMap", "AdminArea: ${address.adminArea}")
-                    Log.d("MainMap", "SubAdminArea: ${address.subAdminArea}")
-                    Log.d("MainMap", "Locality: ${address.locality}")
-                    Log.d("MainMap", "SubLocality: ${address.subLocality}")
-                    Log.d("MainMap", "Thoroughfare: ${address.thoroughfare}")
-                    Log.d("MainMap", "SubThoroughfare: ${address.subThoroughfare}")
-                    Log.d("MainMap", "FeatureName: ${address.featureName}")
-                    Log.d("MainMap", "AddressLine[0]: ${address.getAddressLine(0)}")
-
-                    // 가장 완전한 주소 라인 사용
                     val fullAddress = address.getAddressLine(0)
                     if (!fullAddress.isNullOrEmpty()) {
-                        // 한국 주소에서 국가명과 우편번호 제거
                         val cleanAddress = fullAddress
                             .replace("대한민국", "")
                             .replace("South Korea", "")
-                            .replace(Regex("\\d{5}"), "") // 우편번호 제거
+                            .replace(Regex("\\d{5}"), "")
                             .trim()
-                            .replace(Regex("\\s+"), " ") // 여러 공백을 하나로
+                            .replace(Regex("\\s+"), " ")
 
                         if (cleanAddress.isNotEmpty()) {
                             cleanAddress
@@ -99,9 +99,7 @@ fun MainMapScreen(
                             "%.6f, %.6f".format(latitude, longitude)
                         }
                     } else {
-                        // fallback 방법
                         val parts = mutableListOf<String>()
-
                         address.subAdminArea?.let { if (!it.endsWith("도")) parts.add(it) }
                         address.locality?.let { parts.add(it) }
                         address.subLocality?.let { parts.add(it) }
@@ -207,7 +205,7 @@ fun MainMapScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // 상단 4개 버튼을 1줄로 배치
+            // 🆕 상단 5개 버튼을 1줄로 배치 (알림 이력 버튼 추가)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -222,6 +220,27 @@ fun MainMapScreen(
                     contentPadding = PaddingValues(2.dp)
                 ) {
                     Text("설정", fontSize = 12.sp)
+                }
+
+                // 🆕 알림 이력 버튼 (읽지 않은 개수 표시)
+                Button(
+                    onClick = onNavigateToNotificationHistory,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(32.dp),
+                    contentPadding = PaddingValues(2.dp),
+                    colors = if (unreadNotificationCount > 0) {
+                        ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error
+                        )
+                    } else {
+                        ButtonDefaults.buttonColors()
+                    }
+                ) {
+                    Text(
+                        text = if (unreadNotificationCount > 0) "알림($unreadNotificationCount)" else "알림이력",
+                        fontSize = 12.sp
+                    )
                 }
 
                 Button(
@@ -269,6 +288,13 @@ fun MainMapScreen(
                             isRefreshing = true
                             locationsRef.get().addOnSuccessListener { snapshot ->
                                 Log.d("MainMap", "Manual refresh completed")
+
+                                // 🆕 새로고침 시 읽지 않은 알림 개수도 업데이트
+                                if (currentUserId.isNotEmpty()) {
+                                    historyManager.getUnreadCount(currentUserId) { count ->
+                                        unreadNotificationCount = count
+                                    }
+                                }
                             }.addOnFailureListener { error ->
                                 isRefreshing = false
                                 Log.e("MainMap", "Manual refresh failed", error)
@@ -424,7 +450,7 @@ fun MainMapScreen(
             }
         }
 
-        // 컨텍스트 메뉴 표시
+        // 컨텍스트 메뉴 표시 (기존과 동일)
         if (showContextMenu && contextMenuLocation != null) {
             Card(
                 modifier = Modifier
@@ -488,6 +514,7 @@ fun MainMapScreen(
         }
     }
 }
+
 
 // 지도에 마커 업데이트하는 함수
 private fun updateMarkersOnMap(

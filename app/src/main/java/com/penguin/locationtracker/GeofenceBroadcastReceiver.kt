@@ -42,11 +42,15 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
         val geofenceTransition = geofencingEvent.geofenceTransition
         val triggeringGeofences = geofencingEvent.triggeringGeofences
+        val location = geofencingEvent.triggeringLocation
 
         if (triggeringGeofences.isNullOrEmpty()) {
             Log.e(TAG, "No triggering geofences found")
             return
         }
+
+        // 알림 이력 관리자 초기화
+        val historyManager = GeofenceNotificationHistoryManager(context)
 
         Log.d(TAG, "Number of triggering geofences: ${triggeringGeofences.size}")
 
@@ -68,17 +72,59 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
                         // 대상 사용자가 현재 사용자인 경우에만 처리
                         if (geofenceData.targetUserId == currentUserId) {
+                            val transitionType = when (geofenceTransition) {
+                                Geofence.GEOFENCE_TRANSITION_ENTER -> "ENTER"
+                                Geofence.GEOFENCE_TRANSITION_EXIT -> "EXIT"
+                                else -> "UNKNOWN"
+                            }
+
+                            // 위치 정보 (GPS 위치 또는 지오펜스 중심 위치 사용)
+                            val latitude = location?.latitude ?: geofenceData.latitude
+                            val longitude = location?.longitude ?: geofenceData.longitude
+
                             when (geofenceTransition) {
                                 Geofence.GEOFENCE_TRANSITION_ENTER -> {
                                     val title = "${geofenceData.targetUserId} ${geofenceData.name} 도착"
                                     val message = "${geofenceData.targetUserId}가 ${geofenceData.name}에 ${getCurrentTime()}에 도착했습니다."
+
                                     showNotification(context, title, message)
+
+                                    // 🆕 알림 이력 저장
+                                    historyManager.saveNotificationHistory(
+                                        geofenceData = geofenceData,
+                                        transitionType = transitionType,
+                                        latitude = latitude,
+                                        longitude = longitude
+                                    ) { success ->
+                                        if (success) {
+                                            Log.d(TAG, "Notification history saved for ENTER: ${geofenceData.name}")
+                                        } else {
+                                            Log.e(TAG, "Failed to save notification history for ENTER")
+                                        }
+                                    }
+
                                     Log.d(TAG, "Entered geofence: ${geofenceData.name}")
                                 }
                                 Geofence.GEOFENCE_TRANSITION_EXIT -> {
                                     val title = "${geofenceData.targetUserId} ${geofenceData.name} 출발"
                                     val message = "${geofenceData.targetUserId}가 ${geofenceData.name}에서 ${getCurrentTime()}에 출발했습니다."
+
                                     showNotification(context, title, message)
+
+                                    // 🆕 알림 이력 저장
+                                    historyManager.saveNotificationHistory(
+                                        geofenceData = geofenceData,
+                                        transitionType = transitionType,
+                                        latitude = latitude,
+                                        longitude = longitude
+                                    ) { success ->
+                                        if (success) {
+                                            Log.d(TAG, "Notification history saved for EXIT: ${geofenceData.name}")
+                                        } else {
+                                            Log.e(TAG, "Failed to save notification history for EXIT")
+                                        }
+                                    }
+
                                     Log.d(TAG, "Exited geofence: ${geofenceData.name}")
                                 }
                                 else -> {
@@ -129,11 +175,15 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             }
         }
 
-        // 앱 실행 인텐트 생성
-        val appIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+        // 앱 실행 인텐트 생성 (알림 이력 화면으로 이동)
+        val appIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+            putExtra("show_notification_history", true)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
         val pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            System.currentTimeMillis().toInt(),
             appIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -149,6 +199,11 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 .setAutoCancel(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(pendingIntent) // 알림 클릭시 앱 실행
+                .addAction(
+                    android.R.drawable.ic_menu_view,
+                    "이력 보기",
+                    pendingIntent
+                ) // 액션 버튼 추가
                 .build()
 
             val notificationId = System.currentTimeMillis().toInt()
