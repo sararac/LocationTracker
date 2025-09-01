@@ -48,11 +48,19 @@ class MainActivity : ComponentActivity() {
             Log.e("MainActivity", "Firebase initialization error", e)
         }
 
+        // 알림에서 실행된 경우 처리
+        val selectedUserId = intent.getStringExtra("selected_user_id")
+        val notificationType = intent.getStringExtra("notification_type")
+
+        Log.d("MainActivity", "Intent extras - selectedUserId: $selectedUserId, notificationType: $notificationType")
+
         enableEdgeToEdge()
         setContent {
             LocationTrackerTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     LocationTrackerAppWithPermissions(
+                        selectedUserId = selectedUserId,
+                        notificationType = notificationType,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -98,7 +106,11 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LocationTrackerAppWithPermissions(modifier: Modifier = Modifier) {
+fun LocationTrackerAppWithPermissions(
+    selectedUserId: String? = null,
+    notificationType: String? = null,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     var hasRequiredPermissions by remember { mutableStateOf(false) }
     var shouldCheckPermissions by remember { mutableStateOf(true) }
@@ -131,23 +143,40 @@ fun LocationTrackerAppWithPermissions(modifier: Modifier = Modifier) {
             modifier = modifier
         )
     } else {
-        LocationTrackerApp(modifier = modifier)
+        LocationTrackerApp(
+            selectedUserId = selectedUserId,
+            notificationType = notificationType,
+            modifier = modifier
+        )
     }
 }
 
 @Composable
-fun LocationTrackerApp(modifier: Modifier = Modifier) {
+fun LocationTrackerApp(
+    selectedUserId: String? = null,
+    notificationType: String? = null,
+    modifier: Modifier = Modifier
+) {
     var currentScreen by remember { mutableStateOf("main") }
-    var selectedUserId by remember { mutableStateOf("") }
+    var selectedUserIdState by remember { mutableStateOf("") }
     var selectedLatitude by remember { mutableStateOf<Double?>(null) }
     var selectedLongitude by remember { mutableStateOf<Double?>(null) }
     var showGeofenceDialog by remember { mutableStateOf(false) }
+
+    // 알림에서 온 경우 해당 사용자 자동 선택
+    LaunchedEffect(selectedUserId, notificationType) {
+        if (!selectedUserId.isNullOrEmpty() && notificationType == "location_tracking") {
+            selectedUserIdState = selectedUserId
+            currentScreen = "userhistorymap"
+            Log.d("LocationTrackerApp", "Auto-selected user from notification: $selectedUserId")
+        }
+    }
 
     when (currentScreen) {
         "main" -> MainMapScreen(
             onNavigateToSettings = { currentScreen = "settings" },
             onShowUserHistory = { userId ->
-                selectedUserId = userId
+                selectedUserIdState = userId
                 currentScreen = "userhistorymap"
             },
             onNavigateToGeofence = { latitude, longitude ->
@@ -163,7 +192,7 @@ fun LocationTrackerApp(modifier: Modifier = Modifier) {
             modifier = modifier
         )
         "userhistorymap" -> UserLocationHistoryMapScreen(
-            userId = selectedUserId,
+            userId = selectedUserIdState,
             onBackToHistory = { currentScreen = "main" },
             modifier = modifier
         )
@@ -248,9 +277,9 @@ fun MainScreen(
                 )
                 Text(
                     text = if (PermissionManager.hasAllRequiredPermissions(context))
-                        "✅ 모든 권한 허용됨"
+                        "모든 권한 허용됨"
                     else
-                        "❌ 권한 확인 필요",
+                        "권한 확인 필요",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSecondaryContainer

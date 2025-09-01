@@ -53,7 +53,33 @@ class LocationTrackingService : Service() {
         setupLocationCallback()
         createNotificationChannel()
         acquireWakeLock()
+
+        // 위치 추적 알림 매니저 초기화
+        initializeLocationNotificationManager()
+
         Log.d(TAG, "LocationTrackingService created")
+    }
+
+    // 위치 추적 알림 매니저 초기화 메서드 추가
+    private fun initializeLocationNotificationManager() {
+        try {
+            val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            val notificationEnabled = prefs.getBoolean("location_notification_enabled", false)
+            val trackedUsers = prefs.getStringSet("tracked_users", emptySet())?.toList() ?: emptyList()
+
+            if (notificationEnabled && trackedUsers.isNotEmpty()) {
+                val locationNotificationManager = LocationNotificationManager(this)
+
+                // 추적할 사용자들에 대해 알림 시작
+                trackedUsers.forEach { userId ->
+                    locationNotificationManager.startLocationNotifications(userId)
+                }
+
+                Log.d(TAG, "Location notification manager initialized for users: $trackedUsers")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing location notification manager", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -106,6 +132,9 @@ class LocationTrackingService : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
+                    // 🆕 위치 갱신 로그 추가
+                    Log.d(TAG, "📍 Location update received - Lat: ${location.latitude}, Lng: ${location.longitude}, Accuracy: ${location.accuracy}m, Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+
                     handleNewLocation(location)
                     updateNotification(location)
                 }
@@ -145,7 +174,8 @@ class LocationTrackingService : Service() {
             )
         }
 
-        Log.d(TAG, "Location tracking started for user: $userId, interval: ${trackingInterval}sec")
+        // 🆕 상세한 시작 로그
+        Log.d(TAG, "🚀 Location tracking STARTED - User: $userId, Interval: ${trackingInterval}sec, Time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
     }
 
     private fun stopLocationTracking() {
@@ -202,25 +232,28 @@ class LocationTrackingService : Service() {
     private fun handleNewLocation(location: Location) {
         val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         val userId = prefs.getString("user_id", "") ?: ""
-        val locationThreshold = prefs.getInt("location_threshold", 10).toDouble() // 설정에서 가져오기
+        val locationThreshold = prefs.getInt("location_threshold", 10).toDouble()
 
         if (userId.isEmpty()) return
 
         val currentTime = System.currentTimeMillis()
+
+        // 🆕 위치 처리 시작 로그
+        Log.d(TAG, "🔄 Processing location for user: $userId")
 
         // 위치 변동 감지
         if (shouldSaveOrUpdateLocation(location, locationThreshold)) {
 
             if (lastLocation == null || !isSameLocation(location, lastLocation!!, locationThreshold)) {
                 // 새로운 위치 - 새 항목 생성
-                Log.d(TAG, "New location detected, creating new entry")
+                Log.d(TAG, "✨ NEW LOCATION detected for $userId - Distance from last: ${if (lastLocation != null) String.format("%.1f", calculateDistance(lastLocation!!.latitude, lastLocation!!.longitude, location.latitude, location.longitude)) else "N/A"}m")
 
                 val locationData = LocationData(
                     userId = userId,
                     latitude = location.latitude,
                     longitude = location.longitude,
                     timestamp = currentTime,
-                    stayDuration = 0L, // 새 위치이므로 머문시간 0
+                    stayDuration = 0L,
                     lastUpdateTime = currentTime
                 )
 
@@ -228,30 +261,35 @@ class LocationTrackingService : Service() {
                 val newLocationRef = locationsRef.child(userId).push()
                 newLocationRef.setValue(locationData)
                     .addOnSuccessListener {
-                        Log.d(TAG, "New location saved: ${location.latitude}, ${location.longitude}")
-                        currentLocationData = locationData.copy(
-                            userId = userId,
-                            latitude = location.latitude,
-                            longitude = location.longitude,
-                            timestamp = currentTime,
-                            stayDuration = 0L,
-                            lastUpdateTime = currentTime
-                        )
+                        Log.d(TAG, "💾 New location SAVED to Firebase - Key: ${newLocationRef.key}")
+                        currentLocationData = locationData.copy()
                         locationStartTime = currentTime
                         cleanupOldData(userId)
                     }
                     .addOnFailureListener { e ->
-                        Log.e(TAG, "Failed to save new location", e)
+                        Log.e(TAG, "❌ Failed to save new location", e)
                     }
 
                 lastLocation = location
 
             } else {
                 // 같은 위치 - 머문 시간 업데이트
+                val stayDurationMinutes = if (locationStartTime > 0) {
+                    (currentTime - locationStartTime) / (1000 * 60)
+                } else 0L
+
+                Log.d(TAG, "⏱️ STAY DURATION update for $userId - Duration: ${stayDurationMinutes} minutes")
                 updateStayDuration(userId, location, currentTime)
             }
         } else {
-            Log.d(TAG, "Location change too small, not updating")
+            val distance = lastLocation?.let { last ->
+                calculateDistance(
+                    last.latitude, last.longitude,
+                    location.latitude, location.longitude
+                )
+            } ?: 0.0
+
+            Log.d(TAG, "📏 Location change too small for $userId - Distance: ${String.format("%.1f", distance)}m (threshold: ${locationThreshold}m)")
         }
     }
 
@@ -283,14 +321,14 @@ class LocationTrackingService : Service() {
     private fun updateStayDuration(userId: String, location: Location, currentTime: Long) {
         currentLocationData?.let { currentData ->
 
-            // 같은 위치에서 시작한 시간이 설정되지 않았다면 설정
             if (locationStartTime == 0L) {
                 locationStartTime = currentData.timestamp
             }
 
             val totalStayDuration = currentTime - locationStartTime
+            val stayMinutes = totalStayDuration / (1000 * 60)
 
-            Log.d(TAG, "Updating stay duration: ${totalStayDuration / (1000 * 60)} minutes")
+            Log.d(TAG, "⏰ Updating stay duration for $userId - Total: ${stayMinutes} minutes (${totalStayDuration / 1000} seconds)")
 
             // Firebase에서 현재 위치 데이터 업데이트
             locationsRef.child(userId).orderByChild("timestamp").equalTo(currentData.timestamp.toDouble())
@@ -304,23 +342,21 @@ class LocationTrackingService : Service() {
 
                             childSnapshot.ref.updateChildren(updates)
                                 .addOnSuccessListener {
-                                    Log.d(TAG, "Stay duration updated: ${totalStayDuration / (1000 * 60)} minutes")
-
-                                    // 현재 데이터 업데이트
+                                    Log.d(TAG, "✅ Stay duration UPDATED in Firebase - User: $userId, Duration: ${stayMinutes}min")
                                     currentLocationData = currentData.copy(
                                         stayDuration = totalStayDuration,
                                         lastUpdateTime = currentTime
                                     )
                                 }
                                 .addOnFailureListener { e ->
-                                    Log.e(TAG, "Failed to update stay duration", e)
+                                    Log.e(TAG, "❌ Failed to update stay duration for $userId", e)
                                 }
-                            break // 첫 번째 결과만 사용
+                            break
                         }
                     }
 
                     override fun onCancelled(error: DatabaseError) {
-                        Log.e(TAG, "Error finding location data to update", error.toException())
+                        Log.e(TAG, "❌ Error finding location data to update for $userId", error.toException())
                     }
                 })
         }
