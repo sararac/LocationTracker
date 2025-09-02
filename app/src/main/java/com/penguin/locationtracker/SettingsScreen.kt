@@ -41,6 +41,12 @@ fun SettingsScreen(
     var autoRestart by remember { mutableStateOf(prefs.getBoolean("auto_restart_service", true)) }
     var showSavedMessage by remember { mutableStateOf(false) }
 
+    // 🆕 GPS 정확도 관련 설정 추가
+    var minAccuracy by remember { mutableStateOf(prefs.getInt("min_accuracy", 20).toString()) }
+    var maxAccuracy by remember { mutableStateOf(prefs.getInt("max_accuracy", 100).toString()) }
+    var stationaryTime by remember { mutableStateOf(prefs.getInt("stationary_time", 30).toString()) }
+    var stationaryInterval by remember { mutableStateOf(prefs.getInt("stationary_interval", 5).toString()) }
+
     // 위치 추적 알림 설정 관련 상태
     var locationNotificationEnabled by remember { mutableStateOf(prefs.getBoolean("location_notification_enabled", false)) }
     var trackedUsers by remember { mutableStateOf(getTrackedUsersFromPrefs(prefs)) }
@@ -153,6 +159,148 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
+        // 🆕 GPS 정확도 설정 섹션
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = "🎯 GPS 정확도 설정",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 최소 정확도
+                Text(
+                    text = "최소 정확도",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = minAccuracy,
+                    onValueChange = { newValue ->
+                        minAccuracy = newValue.filter { char -> char.isDigit() }
+                        showSavedMessage = false
+                    },
+                    label = { Text("미터 (권장: 20m)", fontSize = 10.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    suffix = { Text("m", fontSize = 10.sp) }
+                )
+
+                Text(
+                    text = "이 값보다 정확도가 좋은 GPS 신호만 사용합니다",
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 최대 정확도
+                Text(
+                    text = "최대 허용 정확도",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = maxAccuracy,
+                    onValueChange = { newValue ->
+                        maxAccuracy = newValue.filter { char -> char.isDigit() }
+                        showSavedMessage = false
+                    },
+                    label = { Text("미터 (권장: 100m)", fontSize = 10.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    suffix = { Text("m", fontSize = 10.sp) }
+                )
+
+                Text(
+                    text = "이 값보다 부정확한 GPS 신호는 무시합니다",
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 정지 상태 감지 시간
+                Text(
+                    text = "정지 상태 감지 시간",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = stationaryTime,
+                    onValueChange = { newValue ->
+                        stationaryTime = newValue.filter { char -> char.isDigit() }
+                        showSavedMessage = false
+                    },
+                    label = { Text("초 (권장: 30초)", fontSize = 10.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    suffix = { Text("초", fontSize = 10.sp) }
+                )
+
+                Text(
+                    text = "이 시간동안 움직이지 않으면 정지 상태로 판단합니다",
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // 정지 중 업데이트 간격
+                Text(
+                    text = "정지 중 업데이트 간격",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = stationaryInterval,
+                    onValueChange = { newValue ->
+                        stationaryInterval = newValue.filter { char -> char.isDigit() }
+                        showSavedMessage = false
+                    },
+                    label = { Text("분 (권장: 5분)", fontSize = 10.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    suffix = { Text("분", fontSize = 10.sp) }
+                )
+
+                Text(
+                    text = "정지 중일 때 이 간격으로 위치를 업데이트합니다 (배터리 절약)",
+                    fontSize = 9.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                )
+            }
+        }
+
         // 데이터 보관 기간 설정
         Text(
             text = "위치 데이터 보관 기간",
@@ -181,7 +329,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 🆕 위치 추적 알림 설정 섹션
+        // 위치 추적 알림 설정 섹션
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -401,6 +549,12 @@ fun SettingsScreen(
                 val retentionValue = dataRetentionDays.toIntOrNull() ?: 7
                 val thresholdValue = locationThreshold.toIntOrNull() ?: 10
 
+                // 🆕 GPS 정확도 값들
+                val minAccuracyValue = minAccuracy.toIntOrNull() ?: 20
+                val maxAccuracyValue = maxAccuracy.toIntOrNull() ?: 100
+                val stationaryTimeValue = stationaryTime.toIntOrNull() ?: 30
+                val stationaryIntervalValue = stationaryInterval.toIntOrNull() ?: 5
+
                 if (userIdValue.isNotEmpty()) {
                     prefs.edit().apply {
                         putString("user_id", userIdValue)
@@ -410,7 +564,13 @@ fun SettingsScreen(
                         putBoolean("auto_start_service", autoStart)
                         putBoolean("auto_restart_service", autoRestart)
 
-                        // 🆕 위치 추적 알림 설정 저장
+                        // 🆕 GPS 정확도 설정 저장
+                        putInt("min_accuracy", maxOf(5, minAccuracyValue))
+                        putInt("max_accuracy", maxOf(20, maxAccuracyValue))
+                        putInt("stationary_time", maxOf(10, stationaryTimeValue))
+                        putInt("stationary_interval", maxOf(1, stationaryIntervalValue))
+
+                        // 위치 추적 알림 설정 저장
                         putBoolean("location_notification_enabled", locationNotificationEnabled)
                         putStringSet("tracked_users", trackedUsers.toSet())
 
@@ -421,7 +581,7 @@ fun SettingsScreen(
 
                     showSavedMessage = true
 
-                    Log.d("Settings", "Settings saved with location notification: $locationNotificationEnabled, users: $trackedUsers")
+                    Log.d("Settings", "Settings saved with GPS accuracy improvements")
                 }
             },
             modifier = Modifier
@@ -462,6 +622,27 @@ fun SettingsScreen(
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                    // 🆕 GPS 정확도 설정 표시
+                    Text(
+                        text = "GPS 최소 정확도: ${maxOf(5, minAccuracy.toIntOrNull() ?: 20)}m",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "GPS 최대 허용: ${maxOf(20, maxAccuracy.toIntOrNull() ?: 100)}m",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "정지 감지 시간: ${maxOf(10, stationaryTime.toIntOrNull() ?: 30)}초",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Text(
+                        text = "정지 중 간격: ${maxOf(1, stationaryInterval.toIntOrNull() ?: 5)}분",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
                     Text(
                         text = "자동 시작: ${if (autoStart) "활성화" else "비활성화"}",
                         fontSize = 11.sp,
@@ -472,7 +653,6 @@ fun SettingsScreen(
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    // 🆕 위치 추적 알림 설정 표시
                     Text(
                         text = "위치 추적 알림: ${if (locationNotificationEnabled) "활성화 (${trackedUsers.size}명)" else "비활성화"}",
                         fontSize = 11.sp,
@@ -492,14 +672,14 @@ fun SettingsScreen(
         }
 
         Text(
-            text = "설정 및 자동 위치 추적 + 실시간 알림",
+            text = "설정 및 자동 위치 추적 + GPS 정확도 개선",
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.secondary,
             modifier = Modifier.padding(bottom = 16.dp)
         )
     }
 
-    // 🆕 사용자 추가 다이얼로그
+    // 사용자 추가 다이얼로그
     if (showAddUserDialog) {
         AlertDialog(
             onDismissRequest = {
@@ -547,12 +727,12 @@ fun SettingsScreen(
     }
 }
 
-// 🆕 SharedPreferences에서 추적 사용자 목록 가져오기
+// SharedPreferences에서 추적 사용자 목록 가져오기
 private fun getTrackedUsersFromPrefs(prefs: android.content.SharedPreferences): List<String> {
     return prefs.getStringSet("tracked_users", emptySet())?.toList() ?: emptyList()
 }
 
-// 🆕 위치 추적 알림 매니저 업데이트
+// 위치 추적 알림 매니저 업데이트
 private fun updateLocationNotificationManager(
     context: Context,
     enabled: Boolean,

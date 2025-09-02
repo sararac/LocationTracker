@@ -36,8 +36,20 @@ class LocationTrackingService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
 
     private var lastLocation: Location? = null
-    private var currentLocationData: LocationData? = null // 현재 위치 데이터 추가
-    private var locationStartTime: Long = 0L // 현재 위치에서 시작한 시간 추가
+    private var currentLocationData: LocationData? = null
+    private var locationStartTime: Long = 0L
+
+    // 🆕 GPS 정확도 개선을 위한 추가 변수들
+    private val locationBuffer = mutableListOf<Location>() // 최근 위치들을 저장
+    private var lastValidLocation: Location? = null // 마지막 유효한 위치
+    private var stationaryStartTime: Long = 0L // 정지 상태 시작 시간
+    private var isStationary = false // 정지 상태 여부
+    private val MIN_ACCURACY = 20.0 // 최소 정확도 (미터)
+    private val MAX_ACCURACY = 100.0 // 최대 허용 정확도 (미터)
+    private val BUFFER_SIZE = 5 // 버퍼에 저장할 위치 개수
+    private val MIN_STATIONARY_TIME = 30 * 1000L // 30초간 정지해야 정지 상태로 인정
+    private val STATIONARY_UPDATE_INTERVAL = 5 * 60 * 1000L // 정지 중 업데이트 간격 (5분)
+    private var lastStationaryUpdate = 0L
 
     companion object {
         private const val TAG = "LocationTracking"
@@ -53,14 +65,10 @@ class LocationTrackingService : Service() {
         setupLocationCallback()
         createNotificationChannel()
         acquireWakeLock()
-
-        // 위치 추적 알림 매니저 초기화
         initializeLocationNotificationManager()
-
         Log.d(TAG, "LocationTrackingService created")
     }
 
-    // 위치 추적 알림 매니저 초기화 메서드 추가
     private fun initializeLocationNotificationManager() {
         try {
             val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
@@ -69,12 +77,9 @@ class LocationTrackingService : Service() {
 
             if (notificationEnabled && trackedUsers.isNotEmpty()) {
                 val locationNotificationManager = LocationNotificationManager(this)
-
-                // 추적할 사용자들에 대해 알림 시작
                 trackedUsers.forEach { userId ->
                     locationNotificationManager.startLocationNotifications(userId)
                 }
-
                 Log.d(TAG, "Location notification manager initialized for users: $trackedUsers")
             }
         } catch (e: Exception) {
@@ -132,10 +137,10 @@ class LocationTrackingService : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
-                    // 🆕 위치 갱신 로그 추가
-                    Log.d(TAG, "📍 Location update received - Lat: ${location.latitude}, Lng: ${location.longitude}, Accuracy: ${location.accuracy}m, Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
+                    Log.d(TAG, "📍 Location update received - Lat: ${location.latitude}, Lng: ${location.longitude}, Accuracy: ${location.accuracy}m, Speed: ${location.speed}m/s, Time: ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
 
-                    handleNewLocation(location)
+                    // 🆕 개선된 위치 처리
+                    handleNewLocationImproved(location)
                     updateNotification(location)
                 }
             }
@@ -160,10 +165,12 @@ class LocationTrackingService : Service() {
 
         startForeground(NOTIFICATION_ID, createNotification(userId, trackingInterval))
 
+        // 🆕 더 정확한 위치 요청 설정
         locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, (trackingInterval * 1000).toLong())
             .setMinUpdateIntervalMillis((trackingInterval * 1000).toLong())
             .setMaxUpdateDelayMillis((trackingInterval * 1000 * 2).toLong())
-            .setWaitForAccurateLocation(false)
+            .setWaitForAccurateLocation(true) // 정확한 위치를 기다림
+            .setMinUpdateDistanceMeters(5.0f) // 최소 5미터 이동해야 업데이트
             .build()
 
         locationRequest?.let { request ->
@@ -174,7 +181,6 @@ class LocationTrackingService : Service() {
             )
         }
 
-        // 🆕 상세한 시작 로그
         Log.d(TAG, "🚀 Location tracking STARTED - User: $userId, Interval: ${trackingInterval}sec, Time: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}")
     }
 
@@ -208,16 +214,17 @@ class LocationTrackingService : Service() {
         val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         val userId = prefs.getString("user_id", "") ?: ""
 
-        // 현재 머문 시간 계산
         val stayDuration = if (locationStartTime > 0) {
-            (System.currentTimeMillis() - locationStartTime) / (1000 * 60) // 분 단위
+            (System.currentTimeMillis() - locationStartTime) / (1000 * 60)
         } else 0L
 
         val stayText = if (stayDuration > 0) " | 머문시간: ${stayDuration}분" else ""
+        val accuracyText = " | 정확도: ${location.accuracy.toInt()}m"
+        val statusText = if (isStationary) " | 정지중" else " | 이동중"
 
         val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("위치 추적 중")
-            .setContentText("$userId | ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}$stayText")
+            .setContentText("$userId | ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}$stayText$accuracyText$statusText")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -229,7 +236,8 @@ class LocationTrackingService : Service() {
         notificationManager.notify(NOTIFICATION_ID, updatedNotification)
     }
 
-    private fun handleNewLocation(location: Location) {
+    // 🆕 개선된 위치 처리 함수
+    private fun handleNewLocationImproved(location: Location) {
         val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         val userId = prefs.getString("user_id", "") ?: ""
         val locationThreshold = prefs.getInt("location_threshold", 10).toDouble()
@@ -238,63 +246,179 @@ class LocationTrackingService : Service() {
 
         val currentTime = System.currentTimeMillis()
 
-        // 🆕 위치 처리 시작 로그
-        Log.d(TAG, "🔄 Processing location for user: $userId")
+        // 1. 정확도 필터링 - 너무 부정확한 위치는 무시
+        if (location.accuracy > MAX_ACCURACY) {
+            Log.d(TAG, "🚫 Location rejected - Poor accuracy: ${location.accuracy}m (threshold: ${MAX_ACCURACY}m)")
+            return
+        }
 
-        // 위치 변동 감지
-        if (shouldSaveOrUpdateLocation(location, locationThreshold)) {
+        // 2. 위치 버퍼에 추가
+        locationBuffer.add(location)
+        if (locationBuffer.size > BUFFER_SIZE) {
+            locationBuffer.removeAt(0) // 가장 오래된 위치 제거
+        }
 
-            if (lastLocation == null || !isSameLocation(location, lastLocation!!, locationThreshold)) {
-                // 새로운 위치 - 새 항목 생성
-                Log.d(TAG, "✨ NEW LOCATION detected for $userId - Distance from last: ${if (lastLocation != null) String.format("%.1f", calculateDistance(lastLocation!!.latitude, lastLocation!!.longitude, location.latitude, location.longitude)) else "N/A"}m")
+        // 3. 버퍼가 충분히 찬 후에만 처리
+        if (locationBuffer.size < 3) {
+            Log.d(TAG, "📊 Building location buffer... (${locationBuffer.size}/$BUFFER_SIZE)")
+            return
+        }
 
-                val locationData = LocationData(
-                    userId = userId,
-                    latitude = location.latitude,
-                    longitude = location.longitude,
-                    timestamp = currentTime,
-                    stayDuration = 0L,
-                    lastUpdateTime = currentTime
-                )
+        // 4. 평균 위치 계산 (스무딩)
+        val smoothedLocation = calculateSmoothedLocation(locationBuffer)
 
-                // Firebase에 새 위치 저장
-                val newLocationRef = locationsRef.child(userId).push()
-                newLocationRef.setValue(locationData)
-                    .addOnSuccessListener {
-                        Log.d(TAG, "💾 New location SAVED to Firebase - Key: ${newLocationRef.key}")
-                        currentLocationData = locationData.copy()
-                        locationStartTime = currentTime
-                        cleanupOldData(userId)
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e(TAG, "❌ Failed to save new location", e)
-                    }
+        // 5. 정지 상태 감지
+        val isCurrentlyStationary = detectStationaryState(smoothedLocation, locationThreshold)
 
-                lastLocation = location
-
-            } else {
-                // 같은 위치 - 머문 시간 업데이트
-                val stayDurationMinutes = if (locationStartTime > 0) {
-                    (currentTime - locationStartTime) / (1000 * 60)
-                } else 0L
-
-                Log.d(TAG, "⏱️ STAY DURATION update for $userId - Duration: ${stayDurationMinutes} minutes")
-                updateStayDuration(userId, location, currentTime)
-            }
+        // 6. 위치 업데이트 결정
+        if (shouldUpdateLocation(smoothedLocation, isCurrentlyStationary, currentTime)) {
+            processLocationUpdate(smoothedLocation, userId, currentTime, isCurrentlyStationary)
         } else {
-            val distance = lastLocation?.let { last ->
-                calculateDistance(
-                    last.latitude, last.longitude,
-                    location.latitude, location.longitude
-                )
-            } ?: 0.0
-
-            Log.d(TAG, "📏 Location change too small for $userId - Distance: ${String.format("%.1f", distance)}m (threshold: ${locationThreshold}m)")
+            Log.d(TAG, "📍 Location update skipped - No significant change or still filtering")
         }
     }
 
-    // 같은 위치인지 판단하는 함수
-    private fun isSameLocation(location1: Location, location2: Location, threshold: Double): Boolean {
+    // 🆕 위치 스무딩 (평균 계산)
+    private fun calculateSmoothedLocation(locations: List<Location>): Location {
+        if (locations.size == 1) return locations[0]
+
+        // 정확도 기반 가중 평균 계산
+        var totalWeight = 0.0
+        var weightedLat = 0.0
+        var weightedLng = 0.0
+        var bestAccuracy = Float.MAX_VALUE
+
+        locations.forEach { loc ->
+            // 정확도가 좋을수록 가중치가 높음 (accuracy가 낮을수록 정확함)
+            val weight = 1.0 / (loc.accuracy + 1.0)
+            totalWeight += weight
+            weightedLat += loc.latitude * weight
+            weightedLng += loc.longitude * weight
+
+            if (loc.accuracy < bestAccuracy) {
+                bestAccuracy = loc.accuracy
+            }
+        }
+
+        val smoothedLocation = Location("smoothed").apply {
+            latitude = weightedLat / totalWeight
+            longitude = weightedLng / totalWeight
+            accuracy = bestAccuracy
+            time = System.currentTimeMillis()
+        }
+
+        Log.d(TAG, "🎯 Smoothed location: accuracy=${smoothedLocation.accuracy}m, original_count=${locations.size}")
+        return smoothedLocation
+    }
+
+    // 🆕 정지 상태 감지
+    private fun detectStationaryState(location: Location, threshold: Double): Boolean {
+        lastValidLocation?.let { lastLoc ->
+            val distance = calculateDistance(
+                lastLoc.latitude, lastLoc.longitude,
+                location.latitude, location.longitude
+            )
+
+            val currentTime = System.currentTimeMillis()
+
+            if (distance <= threshold) {
+                // 임계값 이내 - 정지 중일 수 있음
+                if (stationaryStartTime == 0L) {
+                    stationaryStartTime = currentTime
+                    Log.d(TAG, "🛑 Potential stationary state detected - distance: ${String.format("%.1f", distance)}m")
+                }
+
+                // 일정 시간 이상 정지해야 정지 상태로 인정
+                val stationaryDuration = currentTime - stationaryStartTime
+                if (stationaryDuration >= MIN_STATIONARY_TIME) {
+                    if (!isStationary) {
+                        Log.d(TAG, "✋ Stationary state confirmed - duration: ${stationaryDuration / 1000}s")
+                    }
+                    return true
+                }
+            } else {
+                // 임계값을 벗어남 - 이동 중
+                if (isStationary || stationaryStartTime > 0L) {
+                    Log.d(TAG, "🚶 Movement detected - distance: ${String.format("%.1f", distance)}m, ending stationary state")
+                }
+                stationaryStartTime = 0L
+                return false
+            }
+        }
+
+        return false
+    }
+
+    // 🆕 위치 업데이트 여부 결정
+    private fun shouldUpdateLocation(location: Location, isCurrentlyStationary: Boolean, currentTime: Long): Boolean {
+        // 첫 번째 위치는 항상 저장
+        if (lastValidLocation == null) {
+            return true
+        }
+
+        // 정지 상태 변경 시 업데이트
+        if (this.isStationary != isCurrentlyStationary) {
+            Log.d(TAG, "📍 Status change detected: ${if (isCurrentlyStationary) "Moving → Stationary" else "Stationary → Moving"}")
+            return true
+        }
+
+        // 정지 중일 때는 일정 시간마다만 업데이트
+        if (isCurrentlyStationary) {
+            val timeSinceLastUpdate = currentTime - lastStationaryUpdate
+            if (timeSinceLastUpdate < STATIONARY_UPDATE_INTERVAL) {
+                Log.d(TAG, "⏰ Stationary - skipping update (${timeSinceLastUpdate / 1000}s < ${STATIONARY_UPDATE_INTERVAL / 1000}s)")
+                return false
+            }
+            Log.d(TAG, "⏰ Stationary - time-based update (${timeSinceLastUpdate / 1000}s)")
+            return true
+        }
+
+        // 이동 중일 때는 거리 기반 판단
+        lastValidLocation?.let { lastLoc ->
+            val distance = calculateDistance(
+                lastLoc.latitude, lastLoc.longitude,
+                location.latitude, location.longitude
+            )
+
+            val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            val locationThreshold = prefs.getInt("location_threshold", 10).toDouble()
+
+            if (distance > locationThreshold) {
+                Log.d(TAG, "📍 Significant movement detected: ${String.format("%.1f", distance)}m > ${locationThreshold}m")
+                return true
+            } else {
+                Log.d(TAG, "📏 Minor movement: ${String.format("%.1f", distance)}m <= ${locationThreshold}m - skipping")
+                return false
+            }
+        }
+
+        return false
+    }
+
+    // 🆕 위치 업데이트 처리
+    private fun processLocationUpdate(location: Location, userId: String, currentTime: Long, isCurrentlyStationary: Boolean) {
+        Log.d(TAG, "💾 Processing location update for $userId - Stationary: $isCurrentlyStationary")
+
+        // 상태 업데이트
+        this.isStationary = isCurrentlyStationary
+        if (isCurrentlyStationary) {
+            lastStationaryUpdate = currentTime
+        }
+
+        // 새로운 위치인지 기존 위치의 머문시간 업데이트인지 판단
+        if (lastValidLocation == null || !isSameLocationImproved(location, lastValidLocation!!, 10.0)) {
+            // 새로운 위치
+            createNewLocationRecord(location, userId, currentTime)
+        } else {
+            // 같은 위치 - 머문시간 업데이트
+            updateStayDuration(userId, location, currentTime)
+        }
+
+        lastValidLocation = location
+    }
+
+    // 🆕 개선된 같은 위치 판단
+    private fun isSameLocationImproved(location1: Location, location2: Location, threshold: Double): Boolean {
         val distance = calculateDistance(
             location1.latitude, location1.longitude,
             location2.latitude, location2.longitude
@@ -302,25 +426,34 @@ class LocationTrackingService : Service() {
         return distance <= threshold
     }
 
-    // 위치를 저장하거나 업데이트해야 하는지 판단
-    private fun shouldSaveOrUpdateLocation(newLocation: Location, threshold: Double): Boolean {
-        lastLocation?.let { last ->
-            val distance = calculateDistance(
-                last.latitude, last.longitude,
-                newLocation.latitude, newLocation.longitude
-            )
-            Log.d(TAG, "Distance from last location: ${distance}m (threshold: ${threshold}m)")
+    // 🆕 새로운 위치 레코드 생성
+    private fun createNewLocationRecord(location: Location, userId: String, currentTime: Long) {
+        Log.d(TAG, "✨ Creating new location record for $userId")
 
-            // 거리가 임계값보다 크면 새 위치, 작거나 같으면 같은 위치로 판단
-            return distance > threshold || (currentLocationData != null)
-        }
-        return true // 첫 번째 위치는 항상 저장
+        val locationData = LocationData(
+            userId = userId,
+            latitude = location.latitude,
+            longitude = location.longitude,
+            timestamp = currentTime,
+            stayDuration = 0L,
+            lastUpdateTime = currentTime
+        )
+
+        val newLocationRef = locationsRef.child(userId).push()
+        newLocationRef.setValue(locationData)
+            .addOnSuccessListener {
+                Log.d(TAG, "💾 New location SAVED to Firebase - Key: ${newLocationRef.key}")
+                currentLocationData = locationData.copy()
+                locationStartTime = currentTime
+                cleanupOldData(userId)
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "❌ Failed to save new location", e)
+            }
     }
 
-    // 머문 시간 업데이트
     private fun updateStayDuration(userId: String, location: Location, currentTime: Long) {
         currentLocationData?.let { currentData ->
-
             if (locationStartTime == 0L) {
                 locationStartTime = currentData.timestamp
             }
@@ -328,9 +461,8 @@ class LocationTrackingService : Service() {
             val totalStayDuration = currentTime - locationStartTime
             val stayMinutes = totalStayDuration / (1000 * 60)
 
-            Log.d(TAG, "⏰ Updating stay duration for $userId - Total: ${stayMinutes} minutes (${totalStayDuration / 1000} seconds)")
+            Log.d(TAG, "⏰ Updating stay duration for $userId - Total: ${stayMinutes} minutes")
 
-            // Firebase에서 현재 위치 데이터 업데이트
             locationsRef.child(userId).orderByChild("timestamp").equalTo(currentData.timestamp.toDouble())
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
