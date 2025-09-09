@@ -53,6 +53,10 @@ fun SettingsScreen(
     var showAddUserDialog by remember { mutableStateOf(false) }
     var newTrackedUser by remember { mutableStateOf("") }
 
+    var wifiStationaryDetection by remember {
+        mutableStateOf(prefs.getBoolean("wifi_stationary_detection", true))
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -516,6 +520,36 @@ fun SettingsScreen(
                         }
                     )
                 }
+
+                // UI 부분 (백그라운드 실행 설정 Card 안에 추가)
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "WiFi 기반 정지 감지",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "같은 WiFi 연결 시 정지 상태로 판단 (KTX 등 제외)",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = wifiStationaryDetection,
+                        onCheckedChange = {
+                            wifiStationaryDetection = it
+                            showSavedMessage = false
+                        }
+                    )
+                }
+
             }
         }
 
@@ -555,6 +589,8 @@ fun SettingsScreen(
                 val stationaryTimeValue = stationaryTime.toIntOrNull() ?: 30
                 val stationaryIntervalValue = stationaryInterval.toIntOrNull() ?: 5
 
+
+
                 if (userIdValue.isNotEmpty()) {
                     prefs.edit().apply {
                         putString("user_id", userIdValue)
@@ -573,6 +609,9 @@ fun SettingsScreen(
                         // 위치 추적 알림 설정 저장
                         putBoolean("location_notification_enabled", locationNotificationEnabled)
                         putStringSet("tracked_users", trackedUsers.toSet())
+
+                        // 저장 버튼 onClick 내부에 추가
+                        putBoolean("wifi_stationary_detection", wifiStationaryDetection)
 
                     }.apply()
 

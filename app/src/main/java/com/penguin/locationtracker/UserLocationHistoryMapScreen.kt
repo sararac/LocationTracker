@@ -38,7 +38,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.material3.LocalTextStyle
 
 @Composable
 fun UserLocationHistoryMapScreen(
@@ -167,7 +166,21 @@ fun UserLocationHistoryMapScreen(
 
         // 지도 마커 업데이트
         naverMapInstance?.let { map ->
-            updateLocationHistoryOnMap(map, filteredLocationHistory, activeMarkers, pathOverlay, userId, selectedLocationIndex) { newPath ->
+            // 필터링된 리스트에서 선택된 인덱스 재계산
+            val adjustedSelectedIndex = selectedLocationIndex?.let { originalIndex ->
+                filteredLocationHistory.indexOfFirst {
+                    locationHistory.indexOf(it) == originalIndex
+                }.takeIf { it >= 0 }
+            }
+
+            updateLocationHistoryOnMap(
+                map,
+                filteredLocationHistory,
+                activeMarkers,
+                pathOverlay,
+                userId,
+                adjustedSelectedIndex
+            ) { newPath ->
                 pathOverlay = newPath
             }
         }
@@ -309,14 +322,16 @@ fun UserLocationHistoryMapScreen(
 
                         items(itemsToShow.withIndex().toList()) { (displayIndex, location) ->
                             val originalIndex = locationHistory.indexOf(location)
+                            val filteredIndex = filteredLocationHistory.indexOf(location)
                             val isFirst = displayIndex == 0
+                            val isSelected = selectedLocationIndex == originalIndex
 
                             Card(
                                 colors = CardDefaults.cardColors(
-                                    containerColor = if (isFirst) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surface
+                                    containerColor = when {
+                                        isSelected -> MaterialTheme.colorScheme.tertiaryContainer
+                                        isFirst -> MaterialTheme.colorScheme.primaryContainer
+                                        else -> MaterialTheme.colorScheme.surface
                                     }
                                 ),
                                 modifier = Modifier
@@ -325,7 +340,14 @@ fun UserLocationHistoryMapScreen(
                                         selectedLocationIndex = originalIndex
 
                                         naverMapInstance?.let { map ->
-                                            updateLocationHistoryOnMap(map, filteredLocationHistory, activeMarkers, pathOverlay, userId, originalIndex) { newPath ->
+                                            updateLocationHistoryOnMap(
+                                                map,
+                                                filteredLocationHistory,
+                                                activeMarkers,
+                                                pathOverlay,
+                                                userId,
+                                                filteredIndex
+                                            ) { newPath ->
                                                 pathOverlay = newPath
                                             }
 
@@ -333,7 +355,7 @@ fun UserLocationHistoryMapScreen(
                                                 val currentZoom = map.cameraPosition.zoom
                                                 val cameraPosition = CameraPosition(
                                                     LatLng(location.latitude, location.longitude),
-                                                    currentZoom
+                                                    if (currentZoom < 14.0) 14.0 else currentZoom
                                                 )
                                                 map.cameraPosition = cameraPosition
                                             } catch (e: Exception) {
@@ -342,14 +364,28 @@ fun UserLocationHistoryMapScreen(
                                         }
                                     }
                             ) {
-                                Text(
-                                    text = "#${originalIndex + 1} ${formatDateTime(location.timestamp)} ${locationAddresses[location.timestamp] ?: ""}",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
+                                Row(
                                     modifier = Modifier.padding(6.dp),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "#${originalIndex + 1} ${formatDateTime(location.timestamp)} ${locationAddresses[location.timestamp] ?: ""}",
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        modifier = Modifier.weight(1f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    if (isSelected) {
+                                        Text(
+                                            text = "📍",
+                                            fontSize = 12.sp,
+                                            modifier = Modifier.padding(start = 4.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -529,17 +565,23 @@ private fun updateLocationHistoryOnMap(
         }
 
         locationHistory.forEachIndexed { index, location ->
+            // 선택된 위치도 마커 표시
             val shouldShowMarker = when {
                 index == 0 -> true
                 index == locationHistory.size - 1 -> true
-                selectedIndex == index -> true
+                selectedIndex == index -> true  // 선택된 위치
                 else -> false
             }
 
             if (shouldShowMarker) {
                 val marker = Marker().apply {
                     position = LatLng(location.latitude, location.longitude)
-                    captionText = "${index + 1}: ${getTimeOnly(location.timestamp)}"
+                    captionText = when {
+                        index == 0 -> "시작 ${getTimeOnly(location.timestamp)}"
+                        index == locationHistory.size - 1 -> "종료 ${getTimeOnly(location.timestamp)}"
+                        selectedIndex == index -> "#${index + 1} ${getTimeOnly(location.timestamp)}"
+                        else -> "${index + 1}: ${getTimeOnly(location.timestamp)}"
+                    }
                     captionTextSize = 11f
 
                     icon = when {

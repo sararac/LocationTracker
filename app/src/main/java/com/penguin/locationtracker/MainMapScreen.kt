@@ -34,6 +34,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.*
 
+// 3. import 추가 (파일 상단에)
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextOverflow
+import java.text.SimpleDateFormat
+
+
 @Composable
 fun MainMapScreen(
     onNavigateToSettings: () -> Unit,
@@ -343,16 +352,8 @@ fun MainMapScreen(
                     }
 
                     items(sortedUsers) { (userId, location) ->
-                        Row(
+                        Card(
                             modifier = Modifier
-                                .background(
-                                    if (userId == currentUserId) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceVariant
-                                    },
-                                    MaterialTheme.shapes.small
-                                )
                                 .clickable {
                                     if (viewMode == "이력보기") {
                                         onShowUserHistory(userId)
@@ -369,22 +370,48 @@ fun MainMapScreen(
                                             }
                                         }
                                     }
+                                },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (userId == currentUserId) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else if (location.stayDuration > 0) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
                                 }
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            ),
+                            elevation = CardDefaults.cardElevation(
+                                defaultElevation = if (userId == currentUserId) 4.dp else 2.dp
+                            )
                         ) {
-                            Text(
-                                text = getMarkerColorEmoji(userId),
-                                fontSize = 14.sp
-                            )
+                            Column(
+                                modifier = Modifier.padding(
+                                    horizontal = 12.dp,
+                                    vertical = 8.dp
+                                ),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                // 사용자 ID와 이모지
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text(
+                                        text = getMarkerColorEmoji(userId),
+                                        fontSize = 16.sp
+                                    )
 
-                            Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
 
-                            Text(
-                                text = if (userId == currentUserId) "$userId (나)" else userId,
-                                fontSize = 12.sp,
-                                fontWeight = if (userId == currentUserId) FontWeight.Bold else FontWeight.Medium
-                            )
+                                    Text(
+                                        text = if (userId == currentUserId) "$userId (나)" else userId,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (userId == currentUserId) FontWeight.Bold else FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -515,8 +542,7 @@ fun MainMapScreen(
     }
 }
 
-
-// 지도에 마커 업데이트하는 함수
+// 4. 지도 마커 캡션에도 머문시간 추가 (updateMarkersOnMap 함수 수정)
 private fun updateMarkersOnMap(
     naverMap: NaverMap,
     userLocations: Map<String, LocationData>,
@@ -530,10 +556,23 @@ private fun updateMarkersOnMap(
     userLocations.forEach { (userId, location) ->
         val colorIndex = Math.abs(userId.hashCode()) % 8
 
+        // 머문시간에 따라 캡션 텍스트 구성
+        val captionText = if (location.stayDuration > 0) {
+            val duration = formatStayDuration(location.stayDuration)
+            "$userId\n$duration"
+        } else {
+            userId
+        }
+
         val marker = Marker().apply {
             position = LatLng(location.latitude, location.longitude)
-            captionText = userId
-            captionTextSize = 12f
+            this.captionText = captionText
+            captionTextSize = if (location.stayDuration > 0) 11f else 12f
+
+            // 머문시간이 긴 경우 강조
+            if (location.stayDuration > 30 * 60 * 1000) { // 30분 이상
+                captionTextSize = 12f
+            }
 
             icon = when (colorIndex) {
                 0 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
@@ -545,6 +584,7 @@ private fun updateMarkersOnMap(
                 6 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_lightblue)
                 else -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
             }
+
             map = naverMap
         }
         activeMarkers[userId] = marker
@@ -562,5 +602,36 @@ private fun getMarkerColorEmoji(userId: String): String {
         5 -> "🟡"
         6 -> "🔵"
         else -> "🔴"
+    }
+}
+
+// 2. 헬퍼 함수 추가 (파일 하단에)
+private fun formatStayDuration(stayDuration: Long): String {
+    if (stayDuration <= 0) return ""
+
+    val totalMinutes = stayDuration / (1000 * 60)
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+
+    return when {
+        hours > 0 -> "${hours}시간 ${minutes}분"
+        minutes > 0 -> "${minutes}분"
+        else -> "1분 미만"
+    }
+}
+
+private fun getSimpleTime(timestamp: Long): String {
+    val now = Calendar.getInstance()
+    val locationTime = Calendar.getInstance().apply {
+        timeInMillis = timestamp
+    }
+
+    return if (now.get(Calendar.DAY_OF_YEAR) == locationTime.get(Calendar.DAY_OF_YEAR) &&
+        now.get(Calendar.YEAR) == locationTime.get(Calendar.YEAR)) {
+        // 오늘이면 시:분만
+        SimpleDateFormat("HH:mm", Locale.KOREAN).format(Date(timestamp))
+    } else {
+        // 다른 날이면 월.일 시:분
+        SimpleDateFormat("MM.dd HH:mm", Locale.KOREAN).format(Date(timestamp))
     }
 }

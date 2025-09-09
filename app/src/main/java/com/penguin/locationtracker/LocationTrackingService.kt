@@ -25,6 +25,10 @@ import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import java.util.*
 import kotlin.math.*
+import android.app.Notification
+
+import android.net.wifi.WifiManager
+
 
 class LocationTrackingService : Service() {
 
@@ -51,6 +55,59 @@ class LocationTrackingService : Service() {
     private val STATIONARY_UPDATE_INTERVAL = 5 * 60 * 1000L // 정지 중 업데이트 간격 (5분)
     private var lastStationaryUpdate = 0L
 
+    private var connectedWifiSSID: String? = null
+    private var wifiStationaryCount = 0
+    private val WIFI_STATIONARY_THRESHOLD = 3
+
+    // 알려진 이동형 WiFi 패턴
+    private val MOBILE_WIFI_PATTERNS = listOf(
+        "KTX",           // KTX WiFi
+        "SRT",           // SRT WiFi
+        "ITX",           // ITX WiFi
+        "KorailWiFi",    // 코레일 WiFi
+        "PublicWiFi@BUS", // 버스 WiFi
+        "T wifi zone_Secure", // 이동형 T WiFi
+        "_Free_U+zone",  // 이동형 U+ WiFi
+        "korail",        // 코레일 변형
+        "KORAIL"         // 코레일 대문자
+    )
+
+    // WiFi 관련 헬퍼 함수들 추가
+    private fun getConnectedWifiSSID(): String? {
+        return try {
+            val wifiManager = getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiInfo = wifiManager.connectionInfo
+
+            if (wifiInfo != null && wifiInfo.networkId != -1) {
+                wifiInfo.ssid?.replace("\"", "") // SSID에서 따옴표 제거
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting WiFi SSID", e)
+            null
+        }
+    }
+
+    private fun isMobileWiFi(ssid: String?): Boolean {
+        if (ssid == null) return false
+
+        return MOBILE_WIFI_PATTERNS.any { pattern ->
+            ssid.contains(pattern, ignoreCase = true)
+        }
+    }
+
+    private fun detectMotionType(location: Location): String {
+        return when {
+            !location.hasSpeed() -> "UNKNOWN"
+            location.speed < 0.5f -> "STATIONARY"      // 정지 (< 1.8km/h)
+            location.speed < 2.0f -> "WALKING"         // 도보 (< 7.2km/h)
+            location.speed < 8.0f -> "RUNNING"         // 달리기 (< 28.8km/h)
+            location.speed < 20.0f -> "VEHICLE_SLOW"   // 차량 저속 (< 72km/h)
+            else -> "VEHICLE_FAST"                     // 차량 고속 (KTX 등)
+        }
+    }
+
     companion object {
         private const val TAG = "LocationTracking"
         private const val NOTIFICATION_ID = 1
@@ -63,7 +120,7 @@ class LocationTrackingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         setupLocationCallback()
-        createNotificationChannel()
+        createNotificationChannels()  // createNotificationChannel() 대신 이것 호출
         acquireWakeLock()
         initializeLocationNotificationManager()
         Log.d(TAG, "LocationTrackingService created")
@@ -114,22 +171,32 @@ class LocationTrackingService : Service() {
         }
     }
 
-    private fun createNotificationChannel() {
+    private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "위치 추적 서비스",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "백그라운드에서 위치를 추적합니다"
-                setShowBadge(false)
-                setSound(null, null)
-                enableVibration(false)
+            val notificationManager = getSystemService(NotificationManager::class.java)
+
+            // 기존 채널 삭제 (있다면)
+            try {
+                notificationManager.deleteNotificationChannel(CHANNEL_ID)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting old channel", e)
             }
 
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-            Log.d(TAG, "Notification channel created")
+            // 1. 위치 추적용 채널 (최소 표시)
+            val trackingChannel = NotificationChannel(
+                CHANNEL_ID, // 기존 상수 사용
+                "위치 추적 (백그라운드)",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "백그라운드 위치 추적 상태"
+                setShowBadge(false)
+                enableVibration(false)
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_SECRET
+            }
+
+            notificationManager.createNotificationChannel(trackingChannel)
+            Log.d(TAG, "Location tracking channel created with LOW importance")
         }
     }
 
@@ -157,13 +224,19 @@ class LocationTrackingService : Service() {
         val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         val userId = prefs.getString("user_id", "") ?: ""
         val trackingInterval = prefs.getInt("tracking_interval", 10)
+        val showNotification = prefs.getBoolean("show_tracking_notification", false)
 
         if (userId.isEmpty()) {
             Log.e(TAG, "User ID not set")
             return
         }
 
-        startForeground(NOTIFICATION_ID, createNotification(userId, trackingInterval))
+        // 알림 채널 재생성 (설정이 변경되었을 수 있으므로)
+        createNotificationChannels()
+
+        // 알림 생성 시 우선순위 조정
+        val notification = createNotification(userId, trackingInterval)
+        startForeground(NOTIFICATION_ID, notification)
 
         // 🆕 더 정확한 위치 요청 설정
         locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, (trackingInterval * 1000).toLong())
@@ -187,9 +260,11 @@ class LocationTrackingService : Service() {
     private fun stopLocationTracking() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
         stopForeground(STOP_FOREGROUND_REMOVE)
+
         releaseWakeLock()
         Log.d(TAG, "Location tracking stopped")
     }
+
 
     private fun createNotification(userId: String, intervalSeconds: Int): android.app.Notification {
         val intent = packageManager.getLaunchIntentForPackage(packageName)
@@ -202,38 +277,20 @@ class LocationTrackingService : Service() {
             .setContentTitle("위치 추적 중")
             .setContentText("사용자: $userId | 추적 주기: ${intervalSeconds}초")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)  // LOW에서 MIN으로 변경
             .setOngoing(true)
             .setAutoCancel(false)
             .setSilent(true)
+            .setShowWhen(false)  // 시간 표시 안 함
+            .setLocalOnly(true)  // 로컬 기기에만 표시
             .setContentIntent(pendingIntent)
             .build()
     }
 
+    // updateNotification 함수는 삭제하거나 아래처럼 단순화
     private fun updateNotification(location: Location) {
-        val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
-        val userId = prefs.getString("user_id", "") ?: ""
-
-        val stayDuration = if (locationStartTime > 0) {
-            (System.currentTimeMillis() - locationStartTime) / (1000 * 60)
-        } else 0L
-
-        val stayText = if (stayDuration > 0) " | 머문시간: ${stayDuration}분" else ""
-        val accuracyText = " | 정확도: ${location.accuracy.toInt()}m"
-        val statusText = if (isStationary) " | 정지중" else " | 이동중"
-
-        val updatedNotification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("위치 추적 중")
-            .setContentText("$userId | ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())}$stayText$accuracyText$statusText")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setSilent(true)
-            .build()
-
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, updatedNotification)
+        // 알림 업데이트를 하지 않음 (MIN 우선순위에서는 업데이트해도 보이지 않음)
+        return
     }
 
     // 🆕 개선된 위치 처리 함수
@@ -241,6 +298,7 @@ class LocationTrackingService : Service() {
         val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
         val userId = prefs.getString("user_id", "") ?: ""
         val locationThreshold = prefs.getInt("location_threshold", 10).toDouble()
+        val wifiStationaryDetection = prefs.getBoolean("wifi_stationary_detection", true)
 
         if (userId.isEmpty()) return
 
@@ -252,29 +310,98 @@ class LocationTrackingService : Service() {
             return
         }
 
-        // 2. 위치 버퍼에 추가
-        locationBuffer.add(location)
-        if (locationBuffer.size > BUFFER_SIZE) {
-            locationBuffer.removeAt(0) // 가장 오래된 위치 제거
+        // 2. WiFi 기반 정지 감지 (설정이 켜져 있을 때만)
+        if (wifiStationaryDetection) {
+            val currentWifiSSID = getConnectedWifiSSID()
+
+            if (currentWifiSSID != null && location.accuracy > 30) {
+                // 이동형 WiFi인지 확인
+                if (isMobileWiFi(currentWifiSSID)) {
+                    Log.d(TAG, "🚄 Mobile WiFi detected: $currentWifiSSID - normal tracking")
+                    // 이동형 WiFi면 정상 추적 계속
+                    connectedWifiSSID = null
+                    wifiStationaryCount = 0
+                } else {
+                    // 고정형 WiFi 처리
+                    val motionType = detectMotionType(location)
+                    val isMoving = location.hasSpeed() && location.speed > 2.0f // 2m/s 이상
+
+                    // 이전 위치와의 거리 계산
+                    val distanceFromLastLocation = lastValidLocation?.let { lastLoc ->
+                        calculateDistance(
+                            lastLoc.latitude, lastLoc.longitude,
+                            location.latitude, location.longitude
+                        )
+                    } ?: 0.0
+
+                    // 차량 이동 중이거나 거리가 많이 변했으면
+                    if (motionType.startsWith("VEHICLE") || distanceFromLastLocation > 100) {
+                        Log.d(TAG, "📶 WiFi connected but moving - Motion: $motionType, Distance: ${distanceFromLastLocation}m")
+                        isStationary = false
+                        wifiStationaryCount = 0
+                    } else {
+                        // 정지 상태 WiFi 처리
+                        if (currentWifiSSID == connectedWifiSSID) {
+                            wifiStationaryCount++
+
+                            if (wifiStationaryCount >= WIFI_STATIONARY_THRESHOLD) {
+                                Log.d(TAG, "🏠 Stationary at WiFi: $currentWifiSSID (count: $wifiStationaryCount)")
+
+                                if (!isStationary) {
+                                    isStationary = true
+                                    stationaryStartTime = currentTime
+                                }
+
+                                // 머문시간만 업데이트
+                                lastValidLocation?.let { lastLoc ->
+                                    updateStayDuration(userId, lastLoc, currentTime)
+                                }
+
+                                // WiFi 정지 상태에서는 위치 업데이트 건너뛰기
+                                return
+                            }
+                        } else {
+                            // WiFi가 변경됨
+                            Log.d(TAG, "📶 WiFi changed: $connectedWifiSSID -> $currentWifiSSID")
+                            connectedWifiSSID = currentWifiSSID
+                            wifiStationaryCount = 1
+                            isStationary = false
+                        }
+                    }
+                }
+            } else {
+                // WiFi 연결이 없음
+                if (connectedWifiSSID != null) {
+                    Log.d(TAG, "📶 WiFi disconnected, using normal location tracking")
+                }
+                connectedWifiSSID = null
+                wifiStationaryCount = 0
+            }
         }
 
-        // 3. 버퍼가 충분히 찬 후에만 처리
+        // 3. 위치 버퍼에 추가
+        locationBuffer.add(location)
+        if (locationBuffer.size > BUFFER_SIZE) {
+            locationBuffer.removeAt(0)
+        }
+
+        // 4. 버퍼가 충분히 찬 후에만 처리
         if (locationBuffer.size < 3) {
             Log.d(TAG, "📊 Building location buffer... (${locationBuffer.size}/$BUFFER_SIZE)")
             return
         }
 
-        // 4. 평균 위치 계산 (스무딩)
+        // 5. 평균 위치 계산 (스무딩)
         val smoothedLocation = calculateSmoothedLocation(locationBuffer)
 
-        // 5. 정지 상태 감지
+        // 6. 정지 상태 감지 (WiFi 기반이 아닌 일반 감지)
         val isCurrentlyStationary = detectStationaryState(smoothedLocation, locationThreshold)
 
-        // 6. 위치 업데이트 결정
+        // 7. 위치 업데이트 결정
         if (shouldUpdateLocation(smoothedLocation, isCurrentlyStationary, currentTime)) {
             processLocationUpdate(smoothedLocation, userId, currentTime, isCurrentlyStationary)
         } else {
-            Log.d(TAG, "📍 Location update skipped - No significant change or still filtering")
+            Log.d(TAG, "📍 Location update skipped - No significant change")
         }
     }
 
