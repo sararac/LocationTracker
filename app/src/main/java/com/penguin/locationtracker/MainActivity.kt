@@ -34,9 +34,19 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import com.penguin.locationtracker.ui.theme.LocationTrackerTheme
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import androidx.core.app.NotificationCompat
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 
 // MainActivity.kt의 onCreate() 메서드 업데이트
 class MainActivity : ComponentActivity() {
+
+    private var notificationListener: ChildEventListener? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -56,6 +66,9 @@ class MainActivity : ComponentActivity() {
 
         Log.d("MainActivity", "Intent extras - selectedUserId: $selectedUserId, notificationType: $notificationType, showNotificationHistory: $showNotificationHistory")
 
+        // 🆕 알림 리스너 시작 (백업용)
+        startBackupNotificationListener()
+
         enableEdgeToEdge()
         setContent {
             LocationTrackerTheme {
@@ -68,6 +81,108 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    // 🆕 백업 알림 리스너 (서비스가 실행되지 않을 때를 대비)
+    private fun startBackupNotificationListener() {
+        try {
+            val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            val currentUserId = prefs.getString("user_id", "") ?: ""
+
+            if (currentUserId.isEmpty()) {
+                Log.d("MainActivity", "No user ID set for backup notification listener")
+                return
+            }
+
+            val database = Firebase.database
+            val notificationHistoryRef = database.getReference("notification_history")
+
+            notificationListener = object : ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    val notification = snapshot.getValue(GeofenceNotificationData::class.java)
+
+                    if (notification != null &&
+                        notification.notifyUserId == currentUserId &&
+                        !notification.isRead) {
+
+                        // 최근 5분 이내의 알림만 처리 (중복 방지)
+                        val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
+                        if (notification.timestamp > fiveMinutesAgo) {
+                            showBackupNotification(notification)
+                            Log.d("MainActivity", "🔔 Backup notification shown for: ${notification.geofenceName}")
+                        }
+                    }
+                }
+
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+                override fun onChildRemoved(snapshot: DataSnapshot) {}
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("MainActivity", "Backup notification listener cancelled: ${error.message}")
+                }
+            }
+
+            notificationHistoryRef
+                .orderByChild("notifyUserId")
+                .equalTo(currentUserId)
+                .addChildEventListener(notificationListener!!)
+
+            Log.d("MainActivity", "✅ Backup notification listener started")
+
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error starting backup notification listener", e)
+        }
+    }
+
+    // 🆕 백업 알림 표시
+    private fun showBackupNotification(data: GeofenceNotificationData) {
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // 알림 채널 생성
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    "geofence_backup_notifications",
+                    "위치 알림 (백업)",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "지정된 장소 도착/출발 알림 (백업)"
+                    enableVibration(true)
+                    enableLights(true)
+                    setShowBadge(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val intent = Intent(this, MainActivity::class.java).apply {
+                putExtra("show_notification_history", true)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                data.id.hashCode() + 1000, // 백업용이므로 다른 ID 사용
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val notification = NotificationCompat.Builder(this, "geofence_backup_notifications")
+                .setContentTitle("📍 ${data.getNotificationTitle()}")
+                .setContentText(data.getNotificationMessage())
+                .setStyle(NotificationCompat.BigTextStyle().bigText(data.getNotificationMessage()))
+                .setSmallIcon(android.R.drawable.ic_dialog_map)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build()
+
+            notificationManager.notify(data.id.hashCode() + 1000, notification)
+
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error showing backup notification", e)
         }
     }
 
@@ -104,6 +219,21 @@ class MainActivity : ComponentActivity() {
         // 앱이 포그라운드로 올라올 때마다 권한 확인 후 서비스 시작
         if (PermissionManager.hasAllRequiredPermissions(this)) {
             startLocationServiceIfEnabled()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        // 🆕 알림 리스너 정리
+        notificationListener?.let { listener ->
+            try {
+                Firebase.database.getReference("notification_history").removeEventListener(listener)
+                notificationListener = null
+                Log.d("MainActivity", "Backup notification listener stopped")
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Error stopping backup notification listener", e)
+            }
         }
     }
 }

@@ -28,7 +28,7 @@ import kotlin.math.*
 import android.app.Notification
 
 import android.net.wifi.WifiManager
-
+import com.google.firebase.database.ChildEventListener
 
 class LocationTrackingService : Service() {
 
@@ -71,6 +71,10 @@ class LocationTrackingService : Service() {
         "korail",        // 코레일 변형
         "KORAIL"         // 코레일 대문자
     )
+
+    private var notificationListener: ChildEventListener? = null
+    private val notificationHistoryRef = Firebase.database.getReference("notification_history")
+
 
     // WiFi 관련 헬퍼 함수들 추가
     private fun getConnectedWifiSSID(): String? {
@@ -123,6 +127,7 @@ class LocationTrackingService : Service() {
         createNotificationChannels()  // createNotificationChannel() 대신 이것 호출
         acquireWakeLock()
         initializeLocationNotificationManager()
+        startNotificationListener() // 🆕 추가
         Log.d(TAG, "LocationTrackingService created")
     }
 
@@ -699,10 +704,143 @@ class LocationTrackingService : Service() {
         }
     }
 
+    // 🆕 새로 추가할 메서드
+    private fun startNotificationListener() {
+        try {
+            val prefs = getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
+            val currentUserId = prefs.getString("user_id", "") ?: ""
+
+            if (currentUserId.isEmpty()) {
+                Log.d(TAG, "No user ID set, skipping notification listener")
+                return
+            }
+
+            Log.d(TAG, "Starting notification listener for user: $currentUserId")
+
+            notificationListener = object : ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    val notification = snapshot.getValue(GeofenceNotificationData::class.java)
+
+                    if (notification != null &&
+                        notification.notifyUserId == currentUserId &&
+                        !notification.isRead) {
+
+                        // 새로운 알림이 추가되면 로컬 알림 표시
+                        showLocalNotification(notification)
+
+                        Log.d(TAG, "🔔 New geofence notification received for: ${notification.geofenceName}")
+                    }
+                }
+
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                    // 필요시 구현
+                }
+
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                    // 필요시 구현
+                }
+
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                    // 필요시 구현
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Notification listener cancelled: ${error.message}")
+                }
+            }
+
+            // 알림받을 사용자만 필터링하여 리스너 설정
+            notificationHistoryRef
+                .orderByChild("notifyUserId")
+                .equalTo(currentUserId)
+                .addChildEventListener(notificationListener!!)
+
+            Log.d(TAG, "✅ Notification listener started for user: $currentUserId")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting notification listener", e)
+        }
+    }
+
+    // 🆕 로컬 알림 표시 메서드
+    private fun showLocalNotification(data: GeofenceNotificationData) {
+        try {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // 알림 채널 생성 (필요시)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    "geofence_notifications",
+                    "위치 알림",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "지정된 장소 도착/출발 알림"
+                    enableVibration(true)
+                    enableLights(true)
+                    setShowBadge(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            // 앱 실행 인텐트
+            val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                putExtra("show_notification_history", true)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                this,
+                data.id.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // 알림 생성 및 표시
+            val notification = NotificationCompat.Builder(this, "geofence_notifications")
+                .setContentTitle(data.getNotificationTitle())
+                .setContentText(data.getNotificationMessage())
+                .setStyle(NotificationCompat.BigTextStyle().bigText(data.getNotificationMessage()))
+                .setSmallIcon(android.R.drawable.ic_dialog_map)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setContentIntent(pendingIntent)
+                .addAction(
+                    android.R.drawable.ic_menu_view,
+                    "이력 보기",
+                    pendingIntent
+                )
+                .build()
+
+            notificationManager.notify(data.id.hashCode(), notification)
+
+            Log.d(TAG, "🔔 Local notification shown: ${data.getNotificationTitle()}")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing local notification", e)
+        }
+    }
+
+    // 🆕 알림 리스너 정리
+    private fun stopNotificationListener() {
+        notificationListener?.let { listener ->
+            try {
+                notificationHistoryRef.removeEventListener(listener)
+                notificationListener = null
+                Log.d(TAG, "Notification listener stopped")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error stopping notification listener", e)
+            }
+        }
+    }
+
+
     override fun onDestroy() {
         super.onDestroy()
         stopLocationTracking()
         releaseWakeLock()
+        stopNotificationListener() // 🆕 추가
         Log.d(TAG, "LocationTrackingService destroyed")
     }
 }

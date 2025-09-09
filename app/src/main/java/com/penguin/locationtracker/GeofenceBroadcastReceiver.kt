@@ -70,7 +70,9 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                         val prefs = context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE)
                         val currentUserId = prefs.getString("user_id", "") ?: ""
 
-                        // 대상 사용자가 현재 사용자인 경우에만 처리
+                        Log.d(TAG, "Geofence data found - target: ${geofenceData.targetUserId}, notify: ${geofenceData.notifyUserId}, current: $currentUserId")
+
+                        // 🔥 핵심 수정: 대상 사용자인 경우에만 알림 이력을 Firebase에 저장
                         if (geofenceData.targetUserId == currentUserId) {
                             val transitionType = when (geofenceTransition) {
                                 Geofence.GEOFENCE_TRANSITION_ENTER -> "ENTER"
@@ -82,57 +84,28 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                             val latitude = location?.latitude ?: geofenceData.latitude
                             val longitude = location?.longitude ?: geofenceData.longitude
 
-                            when (geofenceTransition) {
-                                Geofence.GEOFENCE_TRANSITION_ENTER -> {
-                                    val title = "${geofenceData.targetUserId} ${geofenceData.name} 도착"
-                                    val message = "${geofenceData.targetUserId}가 ${geofenceData.name}에 ${getCurrentTime()}에 도착했습니다."
+                            Log.d(TAG, "Target user detected, saving to Firebase: $transitionType")
 
-                                    showNotification(context, title, message)
-
-                                    // 🆕 알림 이력 저장
-                                    historyManager.saveNotificationHistory(
-                                        geofenceData = geofenceData,
-                                        transitionType = transitionType,
-                                        latitude = latitude,
-                                        longitude = longitude
-                                    ) { success ->
-                                        if (success) {
-                                            Log.d(TAG, "Notification history saved for ENTER: ${geofenceData.name}")
-                                        } else {
-                                            Log.e(TAG, "Failed to save notification history for ENTER")
-                                        }
-                                    }
-
-                                    Log.d(TAG, "Entered geofence: ${geofenceData.name}")
-                                }
-                                Geofence.GEOFENCE_TRANSITION_EXIT -> {
-                                    val title = "${geofenceData.targetUserId} ${geofenceData.name} 출발"
-                                    val message = "${geofenceData.targetUserId}가 ${geofenceData.name}에서 ${getCurrentTime()}에 출발했습니다."
-
-                                    showNotification(context, title, message)
-
-                                    // 🆕 알림 이력 저장
-                                    historyManager.saveNotificationHistory(
-                                        geofenceData = geofenceData,
-                                        transitionType = transitionType,
-                                        latitude = latitude,
-                                        longitude = longitude
-                                    ) { success ->
-                                        if (success) {
-                                            Log.d(TAG, "Notification history saved for EXIT: ${geofenceData.name}")
-                                        } else {
-                                            Log.e(TAG, "Failed to save notification history for EXIT")
-                                        }
-                                    }
-
-                                    Log.d(TAG, "Exited geofence: ${geofenceData.name}")
-                                }
-                                else -> {
-                                    Log.w(TAG, "Unknown geofence transition: $geofenceTransition")
+                            // 🆕 Firebase에 알림 이력 저장 (알림받을 사용자가 감지할 수 있도록)
+                            historyManager.saveNotificationHistory(
+                                geofenceData = geofenceData,
+                                transitionType = transitionType,
+                                latitude = latitude,
+                                longitude = longitude
+                            ) { success ->
+                                if (success) {
+                                    Log.d(TAG, "✅ Notification history saved to Firebase for ${geofenceData.name}")
+                                } else {
+                                    Log.e(TAG, "❌ Failed to save notification history")
                                 }
                             }
+
+                            // 🆕 대상 사용자 기기에서는 로컬 알림을 표시하지 않음
+                            // (알림받을 사용자가 Firebase 변경을 감지하여 알림 표시)
+                            Log.d(TAG, "Target user - notification saved to Firebase, not showing local notification")
+
                         } else {
-                            Log.d(TAG, "Geofence not for current user: target=${geofenceData.targetUserId}, current=$currentUserId")
+                            Log.d(TAG, "Not target user - ignoring geofence event")
                         }
                     } else {
                         Log.e(TAG, "Geofence data not found for id: $geofenceId")
@@ -198,12 +171,12 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setAutoCancel(true)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                .setContentIntent(pendingIntent) // 알림 클릭시 앱 실행
+                .setContentIntent(pendingIntent)
                 .addAction(
                     android.R.drawable.ic_menu_view,
                     "이력 보기",
                     pendingIntent
-                ) // 액션 버튼 추가
+                )
                 .build()
 
             val notificationId = System.currentTimeMillis().toInt()
