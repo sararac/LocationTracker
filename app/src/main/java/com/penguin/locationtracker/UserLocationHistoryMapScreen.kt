@@ -159,29 +159,43 @@ fun UserLocationHistoryMapScreen(
         })
     }
 
-    // 위치 데이터가 업데이트될 때마다 필터링
+    // 위치 데이터가 업데이트될 때마다 필터링 및 초기 선택 설정
     LaunchedEffect(locationHistory, selectedHours) {
         val hours = selectedHours.toIntOrNull() ?: 6
         filterLocationsByHours(hours)
 
+        // 🆕 첫 번째 위치를 자동으로 선택 (필터링된 데이터에서)
+        if (filteredLocationHistory.isNotEmpty() && selectedLocationIndex == null) {
+            selectedLocationIndex = 0 // 첫 번째 위치 선택
+            Log.d("LocationHistoryMap", "Auto-selected first location: ${filteredLocationHistory[0].getFormattedTime()}")
+        }
+
         // 지도 마커 업데이트
         naverMapInstance?.let { map ->
-            // 필터링된 리스트에서 선택된 인덱스 재계산
-            val adjustedSelectedIndex = selectedLocationIndex?.let { originalIndex ->
-                filteredLocationHistory.indexOfFirst {
-                    locationHistory.indexOf(it) == originalIndex
-                }.takeIf { it >= 0 }
-            }
-
             updateLocationHistoryOnMap(
                 map,
                 filteredLocationHistory,
                 activeMarkers,
                 pathOverlay,
                 userId,
-                adjustedSelectedIndex
+                selectedLocationIndex
             ) { newPath ->
                 pathOverlay = newPath
+            }
+
+            // 🆕 첫 번째 위치로 카메라 이동 (데이터가 로드된 후)
+            if (filteredLocationHistory.isNotEmpty() && selectedLocationIndex == 0) {
+                val firstLocation = filteredLocationHistory[0]
+                try {
+                    val cameraPosition = CameraPosition(
+                        LatLng(firstLocation.latitude, firstLocation.longitude),
+                        15.0
+                    )
+                    map.cameraPosition = cameraPosition
+                    Log.d("LocationHistoryMap", "Camera moved to first location")
+                } catch (e: Exception) {
+                    Log.e("LocationHistoryMap", "Error moving camera to first location", e)
+                }
             }
         }
     }
@@ -275,6 +289,7 @@ fun UserLocationHistoryMapScreen(
             Button(
                 onClick = {
                     isLoading = true
+                    selectedLocationIndex = null // 🆕 새로고침 시 선택 초기화
                     userLocationsRef.get().addOnSuccessListener { snapshot ->
                         Log.d("LocationHistoryMap", "Manual refresh completed")
                     }.addOnFailureListener { error ->
@@ -292,7 +307,7 @@ fun UserLocationHistoryMapScreen(
             }
         }
 
-        // 필터링된 데이터로 표시
+        // 필터링된 데이터로 표시 - 🆕 사용자 ID 추가
         if (filteredLocationHistory.isNotEmpty()) {
             Card(
                 modifier = Modifier
@@ -303,7 +318,7 @@ fun UserLocationHistoryMapScreen(
                     modifier = Modifier.padding(8.dp)
                 ) {
                     Text(
-                        text = "최근 ${selectedHours.toIntOrNull() ?: 6}시간 이력 (${filteredLocationHistory.size}개)",
+                        text = "$userId 최근 ${selectedHours.toIntOrNull() ?: 6}시간 이력 (${filteredLocationHistory.size}개)", // 🆕 사용자 ID 추가
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -324,7 +339,7 @@ fun UserLocationHistoryMapScreen(
                             val originalIndex = locationHistory.indexOf(location)
                             val filteredIndex = filteredLocationHistory.indexOf(location)
                             val isFirst = displayIndex == 0
-                            val isSelected = selectedLocationIndex == originalIndex
+                            val isSelected = selectedLocationIndex == filteredIndex // 🆕 filteredIndex 기준으로 변경
 
                             Card(
                                 colors = CardDefaults.cardColors(
@@ -337,7 +352,7 @@ fun UserLocationHistoryMapScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        selectedLocationIndex = originalIndex
+                                        selectedLocationIndex = filteredIndex // 🆕 filteredIndex 사용
 
                                         naverMapInstance?.let { map ->
                                             updateLocationHistoryOnMap(
@@ -370,7 +385,7 @@ fun UserLocationHistoryMapScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "#${originalIndex + 1} ${formatDateTime(location.timestamp)} ${locationAddresses[location.timestamp] ?: ""}",
+                                        text = "#${filteredIndex + 1} ${formatDateTime(location.timestamp)} ${locationAddresses[location.timestamp] ?: ""}", // 🆕 filteredIndex 사용
                                         fontSize = 10.sp,
                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
                                         modifier = Modifier.weight(1f),
@@ -461,7 +476,7 @@ fun UserLocationHistoryMapScreen(
                                         val firstLocation = filteredLocationHistory.first()
                                         CameraPosition(
                                             LatLng(firstLocation.latitude, firstLocation.longitude),
-                                            12.0
+                                            15.0 // 🆕 좀 더 확대된 초기 줌 레벨
                                         )
                                     } else {
                                         CameraPosition(
@@ -472,6 +487,11 @@ fun UserLocationHistoryMapScreen(
                                     naverMap.cameraPosition = initialPosition
 
                                     if (filteredLocationHistory.isNotEmpty()) {
+                                        // 🆕 첫 번째 위치 자동 선택 및 지도 업데이트
+                                        if (selectedLocationIndex == null) {
+                                            selectedLocationIndex = 0
+                                        }
+
                                         updateLocationHistoryOnMap(naverMap, filteredLocationHistory, activeMarkers, pathOverlay, userId, selectedLocationIndex) { newPath ->
                                             pathOverlay = newPath
                                         }
@@ -513,6 +533,7 @@ fun UserLocationHistoryMapScreen(
                 TextButton(
                     onClick = {
                         selectedHours = tempHours.ifEmpty { "6" }
+                        selectedLocationIndex = null // 🆕 시간 변경 시 선택 초기화
                         showTimeDialog = false
                     }
                 ) {
@@ -565,7 +586,7 @@ private fun updateLocationHistoryOnMap(
         }
 
         locationHistory.forEachIndexed { index, location ->
-            // 선택된 위치도 마커 표시
+            // 선택된 위치, 시작, 끝 마커 표시
             val shouldShowMarker = when {
                 index == 0 -> true
                 index == locationHistory.size - 1 -> true
@@ -579,15 +600,15 @@ private fun updateLocationHistoryOnMap(
                     captionText = when {
                         index == 0 -> "시작 ${getTimeOnly(location.timestamp)}"
                         index == locationHistory.size - 1 -> "종료 ${getTimeOnly(location.timestamp)}"
-                        selectedIndex == index -> "#${index + 1} ${getTimeOnly(location.timestamp)}"
+                        selectedIndex == index -> "📍 #${index + 1} ${getTimeOnly(location.timestamp)}" // 🆕 선택된 마커 강조
                         else -> "${index + 1}: ${getTimeOnly(location.timestamp)}"
                     }
-                    captionTextSize = 11f
+                    captionTextSize = if (selectedIndex == index) 12f else 11f // 🆕 선택된 마커 텍스트 크기 증가
 
                     icon = when {
                         index == 0 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_green)
                         index == locationHistory.size - 1 -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_red)
-                        selectedIndex == index -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_blue)
+                        selectedIndex == index -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_blue) // 🆕 선택된 마커 파란색
                         else -> OverlayImage.fromResource(com.naver.maps.map.R.drawable.navermap_default_marker_icon_blue)
                     }
 
