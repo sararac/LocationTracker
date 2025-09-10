@@ -12,13 +12,13 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
-    <!-- 새로 추가할 권한들 - 여기에 추가 -->
+    <!-- 새로 추가할 권한들 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
-    <!-- AndroidManifest.xml에 추가 (다른 권한들과 함께) -->
+    <!-- WiFi 관련 권한들 -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
     <application
@@ -64,7 +64,7 @@
             android:enabled="true"
             android:exported="false" />
 
-        <!-- 부팅 시 자동 시작을 위한 BroadcastReceiver - 새로 추가 -->
+        <!-- 부팅 시 자동 시작을 위한 BroadcastReceiver -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"

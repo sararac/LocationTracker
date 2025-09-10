@@ -33,29 +33,36 @@ fun SettingsScreen(
     val prefs = remember { context.getSharedPreferences("UserPrefs", Context.MODE_PRIVATE) }
     val scrollState = rememberScrollState()
 
+    // 기존 설정들
     var userId by remember { mutableStateOf(prefs.getString("user_id", "") ?: "") }
     var trackingInterval by remember { mutableStateOf(prefs.getInt("tracking_interval", 10).toString()) }
     var dataRetentionDays by remember { mutableStateOf(prefs.getInt("data_retention_days", 7).toString()) }
     var locationThreshold by remember { mutableStateOf(prefs.getInt("location_threshold", 10).toString()) }
     var autoStart by remember { mutableStateOf(prefs.getBoolean("auto_start_service", true)) }
     var autoRestart by remember { mutableStateOf(prefs.getBoolean("auto_restart_service", true)) }
-    var showSavedMessage by remember { mutableStateOf(false) }
+    var wifiStationaryDetection by remember { mutableStateOf(prefs.getBoolean("wifi_stationary_detection", true)) }
 
-    // 🆕 GPS 정확도 관련 설정 추가
+    // 🆕 DBSCAN 관련 설정들
+    var enableDBSCAN by remember { mutableStateOf(prefs.getBoolean("enable_dbscan", true)) }
+    var dbscanEpsilon by remember { mutableStateOf(prefs.getInt("dbscan_epsilon", 15).toString()) }
+    var dbscanMinPoints by remember { mutableStateOf(prefs.getInt("dbscan_min_points", 3).toString()) }
+    var stabilizationSamples by remember { mutableStateOf(prefs.getInt("stabilization_samples", 5).toString()) }
+    var stableLocationThreshold by remember { mutableStateOf(prefs.getInt("stable_location_threshold", 10).toString()) }
+    var locationBufferSize by remember { mutableStateOf(prefs.getInt("location_buffer_size", 20).toString()) }
+
+    // 기존 GPS 정확도 설정들
     var minAccuracy by remember { mutableStateOf(prefs.getInt("min_accuracy", 20).toString()) }
     var maxAccuracy by remember { mutableStateOf(prefs.getInt("max_accuracy", 100).toString()) }
     var stationaryTime by remember { mutableStateOf(prefs.getInt("stationary_time", 30).toString()) }
     var stationaryInterval by remember { mutableStateOf(prefs.getInt("stationary_interval", 5).toString()) }
 
-    // 위치 추적 알림 설정 관련 상태
+    // 기존 위치 추적 알림 설정들
     var locationNotificationEnabled by remember { mutableStateOf(prefs.getBoolean("location_notification_enabled", false)) }
     var trackedUsers by remember { mutableStateOf(getTrackedUsersFromPrefs(prefs)) }
     var showAddUserDialog by remember { mutableStateOf(false) }
     var newTrackedUser by remember { mutableStateOf("") }
 
-    var wifiStationaryDetection by remember {
-        mutableStateOf(prefs.getBoolean("wifi_stationary_detection", true))
-    }
+    var showSavedMessage by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -73,7 +80,7 @@ fun SettingsScreen(
             modifier = Modifier.padding(top = 8.dp, bottom = 12.dp)
         )
 
-        // 사용자 ID 설정
+        // 기존 사용자 ID 설정
         Text(
             text = "사용자 아이디",
             fontSize = 14.sp,
@@ -100,7 +107,259 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 위치 추적 주기 설정
+        // 🆕 WiFi + DBSCAN 설정 섹션
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = "🏠 WiFi + DBSCAN 위치 안정화",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+
+                Text(
+                    text = "실내에서 WiFi 연결 시 GPS 노이즈를 제거하고 정확한 위치를 계산합니다",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // WiFi 기반 정지 감지
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "WiFi 기반 정지 감지",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = "같은 WiFi 연결 시 정지 상태로 판단 (KTX 등 제외)",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = wifiStationaryDetection,
+                        onCheckedChange = {
+                            wifiStationaryDetection = it
+                            showSavedMessage = false
+                        }
+                    )
+                }
+
+                if (wifiStationaryDetection) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // DBSCAN 활성화
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "DBSCAN 클러스터링",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "머신러닝으로 GPS 노이즈 제거 및 위치 안정화",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = enableDBSCAN,
+                            onCheckedChange = {
+                                enableDBSCAN = it
+                                showSavedMessage = false
+                            }
+                        )
+                    }
+
+                    if (enableDBSCAN) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // DBSCAN 파라미터들
+                        Text(
+                            text = "DBSCAN 클러스터링 설정",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // 클러스터 반경 (Epsilon)
+                        Text(
+                            text = "클러스터 반경 (Epsilon)",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = dbscanEpsilon,
+                            onValueChange = { newValue ->
+                                dbscanEpsilon = newValue.filter { char -> char.isDigit() }
+                                showSavedMessage = false
+                            },
+                            label = { Text("미터 (권장: 15m)", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            suffix = { Text("m", fontSize = 10.sp) }
+                        )
+
+                        Text(
+                            text = "이 거리 내의 GPS 포인트들을 하나의 클러스터로 묶습니다",
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 최소 포인트 수
+                        Text(
+                            text = "클러스터 최소 포인트 수",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = dbscanMinPoints,
+                            onValueChange = { newValue ->
+                                dbscanMinPoints = newValue.filter { char -> char.isDigit() }
+                                showSavedMessage = false
+                            },
+                            label = { Text("개 (권장: 3개)", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            suffix = { Text("개", fontSize = 10.sp) }
+                        )
+
+                        Text(
+                            text = "클러스터로 인정하기 위한 최소 GPS 포인트 개수",
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 안정화를 위한 샘플 수
+                        Text(
+                            text = "안정화 최소 샘플 수",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = stabilizationSamples,
+                            onValueChange = { newValue ->
+                                stabilizationSamples = newValue.filter { char -> char.isDigit() }
+                                showSavedMessage = false
+                            },
+                            label = { Text("개 (권장: 5개)", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            suffix = { Text("개", fontSize = 10.sp) }
+                        )
+
+                        Text(
+                            text = "위치 안정화를 시작하기 위한 최소 GPS 샘플 개수",
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 안정된 위치 판단 기준
+                        Text(
+                            text = "안정된 위치 판단 기준",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = stableLocationThreshold,
+                            onValueChange = { newValue ->
+                                stableLocationThreshold = newValue.filter { char -> char.isDigit() }
+                                showSavedMessage = false
+                            },
+                            label = { Text("미터 (권장: 10m)", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            suffix = { Text("m", fontSize = 10.sp) }
+                        )
+
+                        Text(
+                            text = "이 거리 내에서는 위치가 안정화된 것으로 판단",
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        // 위치 버퍼 크기
+                        Text(
+                            text = "위치 데이터 버퍼 크기",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = locationBufferSize,
+                            onValueChange = { newValue ->
+                                locationBufferSize = newValue.filter { char -> char.isDigit() }
+                                showSavedMessage = false
+                            },
+                            label = { Text("개 (권장: 20개)", fontSize = 10.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            singleLine = true,
+                            suffix = { Text("개", fontSize = 10.sp) }
+                        )
+
+                        Text(
+                            text = "DBSCAN 분석을 위해 메모리에 저장할 최대 위치 데이터 개수",
+                            fontSize = 9.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // 기존 위치 추적 주기 설정
         Text(
             text = "위치 추적 주기",
             fontSize = 14.sp,
@@ -128,7 +387,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 위치 변동 감지 기준 설정
+        // 기존 위치 변동 감지 기준 설정
         Text(
             text = "위치 변동 감지 기준",
             fontSize = 14.sp,
@@ -155,7 +414,7 @@ fun SettingsScreen(
         )
 
         Text(
-            text = "이 거리 이내에서는 같은 위치로 판단하여 머문 시간을 누적합니다",
+            text = "일반 이동 시 이 거리 이내에서는 같은 위치로 판단하여 머문 시간을 누적합니다",
             fontSize = 10.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 8.dp)
@@ -163,7 +422,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // 🆕 GPS 정확도 설정 섹션
+        // 기존 GPS 정확도 설정 섹션
         Card(
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer
